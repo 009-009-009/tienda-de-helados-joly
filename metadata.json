@@ -1,0 +1,6 @@
+{
+  "name": "JOLY & HELADOS PANDA - Tienda para Negocios",
+  "description": "Tienda online de helados al por mayor para negocios. Helados JOLY y HELADOS PANDA. Pedidos por caja de Cassatas, helados individuales y postres con despacho y envío por WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
