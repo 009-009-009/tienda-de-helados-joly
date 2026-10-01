@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CatalogProduct } from '../data/catalog';
 import { formatCLP } from '../utils/format';
+import { autoCenterAndCropImage } from '../utils/imageCentering';
 import { Plus, Minus, Check, Image as ImageIcon, Upload, Folder, Sparkles } from 'lucide-react';
 
 interface ProductCardProps {
@@ -20,6 +21,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [imgError, setImgError] = useState(false);
   const [cacheBust, setCacheBust] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [centeredImgSrc, setCenteredImgSrc] = useState<string | null>(null);
 
   useEffect(() => {
     const handleImageUpdate = (e: Event) => {
@@ -37,6 +39,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const showImage = !imgError && (product.hasPreservedPhoto || !!localImagePreview);
   const baseImgSrc = localImagePreview || `/imagenes/${product.imageFileName}`;
   const imgSrc = cacheBust ? `${baseImgSrc}?v=${cacheBust}` : baseImgSrc;
+
+  // Auto-centrar y recortar espacios en blanco a la derecha para que la paleta quede centrada
+  useEffect(() => {
+    if (!showImage) {
+      setCenteredImgSrc(null);
+      return;
+    }
+    const cancel = autoCenterAndCropImage(imgSrc, (processed) => {
+      setCenteredImgSrc(processed);
+    });
+    return cancel;
+  }, [imgSrc, showImage]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,11 +101,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Imagen cargada con centrado perfecto y tamaño destacado */}
         {showImage ? (
           <img
-            src={imgSrc}
+            src={centeredImgSrc || imgSrc}
             alt={product.name}
             onError={() => setImgError(true)}
             loading="lazy"
-            className="w-full h-full object-contain p-1 transition-transform duration-200 group-hover:scale-105 [filter:drop-shadow(0_3px_8px_rgba(0,0,0,0.35))_drop-shadow(0_1px_3px_rgba(0,0,0,0.2))]"
+            className="w-full h-full object-contain p-1 transition-transform duration-200 group-hover:scale-105 [filter:drop-shadow(0_4px_10px_rgba(0,0,0,0.35))_drop-shadow(0_1px_3px_rgba(0,0,0,0.2))]"
           />
         ) : (
           /* Placeholder estilizado sobre fondo azul (Sin fotos de IA) */

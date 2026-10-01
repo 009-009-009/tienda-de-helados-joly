@@ -236,7 +236,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 7819,
     unitRefPrice: 186,
     imageFileName: '2-palos-frambuesa.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'ind-colo-colo-pina',
@@ -247,7 +247,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 9916,
     unitRefPrice: 236,
     imageFileName: 'colo-colo-pina.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'ind-u-de-chile-pina',
@@ -257,21 +257,21 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 42,
     boxPrice: 9916,
     unitRefPrice: 236,
-    imageFileName: 'u-de-chile-pina.png',
-    hasPreservedPhoto: false
+    imageFileName: 'colo-colo-pina.png',
+    hasPreservedPhoto: true
   },
 
   // --- POSTRES Y ESPECIALES (Imágenes de IA removidas) ---
   {
     id: 'postre-manjar-crocante',
-    name: 'Manjar Crocante',
+    name: 'Manjar Crocante (Choco Manjar)',
     categoryId: 'postres-especiales',
     categoryName: 'Postres y Especiales',
     unitsPerBox: 42,
     boxPrice: 13710,
     unitRefPrice: 326,
     imageFileName: 'manjar-crocante.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'postre-choco-panda',
@@ -282,7 +282,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 13711,
     unitRefPrice: 326,
     imageFileName: 'choco-panda.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'postre-crema-frambuesa',
@@ -292,8 +292,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 42,
     boxPrice: 8631,
     unitRefPrice: 205,
-    imageFileName: 'postre-crema-frambuesa.png',
-    hasPreservedPhoto: false
+    imageFileName: 'crema-frambuesa.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'postre-chirimoya-alegre',
@@ -303,8 +303,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 42,
     boxPrice: 8631,
     unitRefPrice: 205,
-    imageFileName: 'postre-chirimoya-alegre.png',
-    hasPreservedPhoto: false
+    imageFileName: 'paleta-chirimoya-alegre.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'postre-mora-mora',
@@ -314,8 +314,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 44,
     boxPrice: 9642,
     unitRefPrice: 219,
-    imageFileName: 'mora-mora.png',
-    hasPreservedPhoto: false
+    imageFileName: 'paleta-mora-mora.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'postre-paleta-crema',
@@ -326,7 +326,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 12854,
     unitRefPrice: 306,
     imageFileName: 'paleta-crema.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'postre-paleta-cassatta',
@@ -336,8 +336,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 42,
     boxPrice: 12844,
     unitRefPrice: 305,
-    imageFileName: 'paleta-cassatta.png',
-    hasPreservedPhoto: false
+    imageFileName: 'paleta-cassata.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'postre-paleta-tunga',
@@ -348,7 +348,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 13467,
     unitRefPrice: 306,
     imageFileName: 'paleta-tunga.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
 
   // --- LÍNEA CHOCANTE Y COPAS ---
@@ -394,7 +394,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 10887,
     unitRefPrice: 680,
     imageFileName: 'cono-crema-frambuesa.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'copa-crema-frambuesa',
@@ -404,8 +404,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 12,
     boxPrice: 8425,
     unitRefPrice: 702,
-    imageFileName: 'copa-crema-frambuesa.png',
-    hasPreservedPhoto: false
+    imageFileName: 'cono-crema-frambuesa.png',
+    hasPreservedPhoto: true
   }
 ];
 

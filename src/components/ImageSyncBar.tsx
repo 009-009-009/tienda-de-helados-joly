@@ -30,6 +30,90 @@ const SLOTS: Slot[] = [
     sub: 'Para los 3 sabores Chocante',
     fileName: 'chocante-crema.frambuesa.png',
     targets: ['Chocante Tres Leches', 'Chocante Frambuesa', 'Chocante Chocolate']
+  },
+  {
+    id: 'colocolo',
+    title: '4. Colo-Colo y U. de Chile',
+    sub: 'Para Colo Colo Piña y U. de Chile Piña',
+    fileName: 'colo-colo-pina.png',
+    targets: ['Colo Colo Piña', 'U. de Chile Piña']
+  },
+  {
+    id: 'cono-crema',
+    title: '5. Cono y Copa Crema',
+    sub: 'Para Cono Crema y Copa Crema Frambuesa',
+    fileName: 'cono-crema-frambuesa.png',
+    targets: ['Cono Crema / Frambuesa', 'Copa Crema / Frambuesa']
+  },
+  {
+    id: 'choco-manjar',
+    title: '6. Choco Manjar',
+    sub: 'Para Manjar Crocante',
+    fileName: 'manjar-crocante.png',
+    targets: ['Manjar Crocante (Choco Manjar)']
+  },
+  {
+    id: 'paleta-cassata',
+    title: '7. Paleta Cassatta',
+    sub: 'Paleta 3 sabores en palo',
+    fileName: 'paleta-cassata.png',
+    targets: ['Paleta Cassatta']
+  },
+  {
+    id: 'paleta-tunga',
+    title: '8. Paleta Tunga',
+    sub: 'Paleta Vainilla y Chocolate',
+    fileName: 'paleta-tunga.png',
+    targets: ['Paleta Tunga']
+  },
+  {
+    id: 'chirimoya-alegre',
+    title: '9. Chirimoya Alegre',
+    sub: 'Paleta Chirimoya Alegre',
+    fileName: 'paleta-chirimoya-alegre.png',
+    targets: ['Chirimoya Alegre']
+  },
+  {
+    id: 'paleta-crema',
+    title: '10. Paleta Crema',
+    sub: 'Paleta de Leche Crema',
+    fileName: 'paleta-crema.png',
+    targets: ['Paleta Crema']
+  },
+  {
+    id: 'choco-panda',
+    title: '11. Choco Panda',
+    sub: 'Paleta Choco Panda',
+    fileName: 'choco-panda.png',
+    targets: ['Choco Panda']
+  },
+  {
+    id: 'crema-frambuesa',
+    title: '12. Crema Frambuesa',
+    sub: 'Paleta Crema Frambuesa',
+    fileName: 'crema-frambuesa.png',
+    targets: ['Crema Frambuesa']
+  },
+  {
+    id: 'mora-mora',
+    title: '13. Mora Mora',
+    sub: 'Paleta Mora Mora',
+    fileName: 'paleta-mora-mora.png',
+    targets: ['Mora Mora']
+  },
+  {
+    id: '2-palos-frambuesa',
+    title: '14. 2 Palos Frambuesa',
+    sub: 'Helado doble de frambuesa',
+    fileName: '2-palos-frambuesa.png',
+    targets: ['2 Palos Frambuesa']
+  },
+  {
+    id: 'logo-joly',
+    title: '⭐ Logo Oficial Joly',
+    sub: 'Logo circular para cabecera',
+    fileName: 'logo_joly_recortado.png',
+    targets: ['Cabecera y Barra de Tienda']
   }
 ];
 
@@ -104,7 +188,7 @@ export const ImageSyncBar: React.FC = () => {
               </span>
             </h3>
             <p className="text-xs text-sky-200">
-              Selecciona o toca cada casilla para asociar las 3 fotos reales que enviaste:
+              Toca el botón amarillo de cada casilla para elegir su foto (quedará centrada automáticamente):
             </p>
           </div>
         </div>
@@ -119,7 +203,7 @@ export const ImageSyncBar: React.FC = () => {
       </div>
 
       {isOpen && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 pt-2">
           {SLOTS.map((slot) => {
             const status = uploadStatus[slot.id] || 'idle';
             const msg = messages[slot.id];

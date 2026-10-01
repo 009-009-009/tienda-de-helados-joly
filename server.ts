@@ -35,6 +35,29 @@ async function startServer() {
       fs.writeFileSync(targetPath, buffer);
       console.log(`[Upload] Imagen guardada en disco: ${targetPath}`);
 
+      // Guardar alias automáticos para evitar errores por tildes o z/s
+      if (fileName.includes('crema-frambue')) {
+        fs.writeFileSync(path.join(targetDir, 'crema-frambuesa.png'), buffer);
+        fs.writeFileSync(path.join(targetDir, 'crema-frambueza.png'), buffer);
+      }
+      if (fileName.includes('paleta-cassat')) {
+        fs.writeFileSync(path.join(targetDir, 'paleta-cassata.png'), buffer);
+        fs.writeFileSync(path.join(targetDir, 'paleta-cassatta.png'), buffer);
+      }
+      if (fileName.includes('colo-colo')) {
+        fs.writeFileSync(path.join(targetDir, 'colo-colo-pina.png'), buffer);
+        fs.writeFileSync(path.join(targetDir, 'colo-colo-piña.png'), buffer);
+      }
+      if (fileName.includes('2-palos') || fileName.includes('dos-palos')) {
+        fs.writeFileSync(path.join(targetDir, '2-palos-frambuesa.png'), buffer);
+        fs.writeFileSync(path.join(targetDir, 'dos-palos-frambuesa.png'), buffer);
+      }
+      if (fileName.includes('logo_joly') || fileName.includes('logo-joly')) {
+        fs.writeFileSync(path.join(targetDir, 'logo_joly_recortado.png'), buffer);
+        fs.writeFileSync(path.join(targetDir, 'logo_joly.png'), buffer);
+        fs.writeFileSync(path.join(__dirname, 'public', 'logo_joly_recortado.png'), buffer);
+      }
+
       return res.json({
         success: true,
         fileName,

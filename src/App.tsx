@@ -85,35 +85,52 @@ export default function App() {
       <section className="bg-white/95 backdrop-blur-md border-b border-slate-900/10 pt-5 pb-6 px-4 sm:px-6 shadow-xs">
         <div className="max-w-6xl mx-auto space-y-4">
           
-          {/* Banner Rojo / Naranja de Despacho Tempranito */}
-          <div className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white rounded-2xl p-4 sm:p-5 shadow-md border-2 border-white flex flex-col sm:flex-row items-center justify-between gap-3.5">
-            <div className="flex items-center gap-3.5 text-center sm:text-left">
-              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 text-2xl shadow-inner">
-                ⏰
+          {/* Reemplazo del banner gigante rojo por el Logo Oficial de Distribuidora Mayorista Joly y aviso compacto */}
+          <div className="bg-gradient-to-r from-sky-900 via-blue-900 to-indigo-950 text-white rounded-2xl p-3 sm:p-4 shadow-sm border border-sky-700/50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+              {/* Logo Joly Circular destacado */}
+              <div className="relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/50 shadow-md bg-[#0066FF] flex items-center justify-center">
+                <img
+                  src="/imagenes/logo_joly_recortado.png"
+                  alt="Distribuidora Mayorista Joly"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1 bg-gradient-to-br from-blue-600 to-indigo-800 pointer-events-none -z-10">
+                  <span className="text-[7px] font-black text-white uppercase tracking-tighter">DISTRIBUIDORA</span>
+                  <span className="text-base font-black text-[#EEFF00]">Joly</span>
+                  <span className="text-[6px] text-white/90 uppercase tracking-tighter">MAYORISTA</span>
+                </div>
               </div>
-              <div>
-                <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                  <span className="bg-[#EEFF00] text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-xs">
-                    Despacho Tempranito
-                  </span>
-                  <span className="text-xs font-bold text-amber-200">
-                    Catálogo Mayorista Oficial
+
+              {/* Título de la tienda y aviso de despacho ultra compacto para celular */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm sm:text-base font-black text-white tracking-tight leading-tight">
+                    Distribuidora Mayorista Joly
+                  </h2>
+                  <span className="bg-[#EEFF00] text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-xs">
+                    Catálogo Oficial
                   </span>
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-white mt-1 leading-snug">
-                  ¡Hola! Ya tenemos disponible nuestro catálogo mayorista online con despacho tempranito
-                </h2>
-                <p className="text-xs text-rose-100 mt-0.5">
-                  Haz tu pedido aquí antes de las <strong>11:00 AM</strong> para que salga en el primer camión de reparto y le llegue tempranito directo a su local.
+                <p className="text-xs text-sky-200 mt-0.5">
+                  Confites, Abarrotes y Helados Panda al por Mayor
                 </p>
+                <div className="inline-flex items-center gap-1.5 mt-1.5 text-[11px] font-bold text-amber-300 bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
+                  <span>⏰</span>
+                  <span>Despacho Tempranito: Pedidos antes de las <strong>11:00 AM</strong></span>
+                </div>
               </div>
             </div>
 
-            <div className="shrink-0 bg-white/20 backdrop-blur-xs px-4 py-2 rounded-xl border border-white/30 text-center">
-              <span className="text-[10px] font-black uppercase tracking-wider block text-amber-200">
-                Hora Límite
+            {/* Hora límite compacta en desktop */}
+            <div className="hidden sm:flex flex-col items-center shrink-0 bg-white/10 px-3.5 py-1.5 rounded-xl border border-white/15 text-center">
+              <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wider">
+                Primer Reparto
               </span>
-              <span className="text-lg font-black text-white tabular-nums">
+              <span className="text-sm font-black text-[#EEFF00]">
                 11:00 AM
               </span>
             </div>

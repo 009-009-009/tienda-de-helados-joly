@@ -40,17 +40,25 @@ export const Header: React.FC<HeaderProps> = ({
         
         {/* Logo JOLY + HELADOS PANDA */}
         <div 
-          className="flex items-center gap-2 cursor-pointer group select-none"
+          className="flex items-center gap-2.5 cursor-pointer group select-none"
           onClick={() => onSelectCategory('all')}
         >
+          <img
+            src="/imagenes/logo_joly_recortado.png"
+            alt="Logo Joly"
+            className="w-9 h-9 sm:w-11 sm:h-11 object-contain rounded-full shadow-xs border border-blue-400/40"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
           <div className="flex items-baseline">
-            <span className="font-black text-3xl sm:text-4xl tracking-tighter text-[#28AEE4]">JO</span>
-            <span className="font-black text-3xl sm:text-4xl tracking-tighter text-[#E31B23]">LY</span>
+            <span className="font-black text-2xl sm:text-3xl tracking-tighter text-[#28AEE4]">JO</span>
+            <span className="font-black text-2xl sm:text-3xl tracking-tighter text-[#E31B23]">LY</span>
           </div>
 
           <div className="hidden sm:inline-block text-xs font-bold text-slate-700 pl-2.5 border-l-2 border-slate-300 leading-tight">
-            <span>Tienda para negocios</span>
-            <span className="block text-slate-950 font-black text-sm">HELADOS PANDA</span>
+            <span>Mayorista</span>
+            <span className="block text-slate-950 font-black text-xs sm:text-sm">HELADOS PANDA</span>
           </div>
         </div>
 
