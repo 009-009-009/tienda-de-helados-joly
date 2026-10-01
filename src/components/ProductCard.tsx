@@ -93,10 +93,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 flex flex-col h-full group">
+    <div className="bg-gradient-to-b from-[#02568f] via-[#01416e] to-[#012d4d] rounded-2xl border-2 border-[#38bdf8]/40 overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-200 flex flex-col h-full group text-white p-2.5 sm:p-3">
       
-      {/* --- CONTENEDOR SUPERIOR CON FONDO AZUL CONSERVADO --- */}
-      <div className="relative aspect-[4/3] w-full flex items-center justify-center overflow-hidden bg-gradient-to-b from-[#38bdf8] via-[#1aa4e3] to-[#0284c7] p-2">
+      {/* --- CONTENEDOR SUPERIOR CON FONDO BLANCO LIMPIO PARA QUE LAS PALETAS CON FONDO BLANCO RESALTEN --- */}
+      <div className="relative aspect-[4/3] w-full flex items-center justify-center overflow-hidden bg-white rounded-xl p-2 shadow-inner border border-sky-100">
         
         {/* Imagen cargada con centrado perfecto y tamaño destacado */}
         {showImage ? (
@@ -105,26 +105,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             alt={product.name}
             onError={() => setImgError(true)}
             loading="lazy"
-            className="w-full h-full object-contain p-1 transition-transform duration-200 group-hover:scale-105 [filter:drop-shadow(0_4px_10px_rgba(0,0,0,0.35))_drop-shadow(0_1px_3px_rgba(0,0,0,0.2))]"
+            className="w-full h-full object-contain p-1 transition-transform duration-200 group-hover:scale-105 [filter:drop-shadow(0_4px_8px_rgba(0,0,0,0.18))]"
           />
         ) : (
-          /* Placeholder estilizado sobre fondo azul (Sin fotos de IA) */
-          <div className="flex flex-col items-center justify-center text-center p-3 text-white w-full h-full">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center mb-2 shadow-inner text-white">
-              <ImageIcon className="w-6 h-6 text-white drop-shadow-sm" />
+          /* Placeholder estilizado sobre fondo suave */
+          <div className="flex flex-col items-center justify-center text-center p-3 text-slate-700 w-full h-full bg-sky-50/80 rounded-lg">
+            <div className="w-12 h-12 rounded-2xl bg-[#0284c7]/10 border border-[#0284c7]/30 flex items-center justify-center mb-1.5 shadow-xs text-[#0284c7]">
+              <ImageIcon className="w-6 h-6" />
             </div>
 
-            <span className="text-[10px] font-black uppercase tracking-wider bg-slate-950/70 backdrop-blur-xs text-[#EEFF00] px-2.5 py-0.5 rounded-full border border-white/20 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-slate-900 text-[#EEFF00] px-2.5 py-0.5 rounded-full mb-1">
               Foto Oficial Pendiente
             </span>
 
-            <p className="text-[10px] text-sky-100 font-medium max-w-[200px] mb-2 leading-tight">
+            <p className="text-[10px] text-slate-500 font-medium max-w-[200px] mb-2 leading-tight">
               Catálogo de Calle ({product.categoryName})
             </p>
 
             <div className="flex items-center gap-1.5">
-              <label className="cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold text-slate-950 bg-white hover:bg-sky-50 px-2.5 py-1 rounded-lg shadow-xs transition-colors">
-                <Upload className="w-3 h-3 text-[#0284c7]" />
+              <label className="cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold text-white bg-[#0284c7] hover:bg-[#026aa0] px-2.5 py-1 rounded-lg shadow-xs transition-colors">
+                <Upload className="w-3 h-3 text-[#EEFF00]" />
                 <span>{isUploading ? 'Guardando...' : 'Cargar foto'}</span>
                 <input
                   type="file"
@@ -138,7 +138,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenGuide(product)}
-                className="text-[11px] text-white/90 hover:text-white underline underline-offset-2 flex items-center gap-1"
+                className="text-[11px] text-slate-600 hover:text-slate-900 underline underline-offset-2 flex items-center gap-1"
                 title="Ver nombre de archivo para Vercel"
               >
                 <Folder className="w-3 h-3" />
@@ -149,12 +149,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
 
         {/* Badge superior izquierdo: Presentación en caja */}
-        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
-          <span className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-slate-900/80 backdrop-blur-xs text-[#EEFF00] border border-black/20 shadow-xs">
+        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
+          <span className="px-2 py-0.5 text-[11px] font-extrabold rounded-md bg-slate-950/90 text-[#EEFF00] border border-black/30 shadow-xs">
             Caja {product.unitsPerBox} un.
           </span>
           {localImagePreview && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-500 text-white shadow-xs">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-600 text-white shadow-xs">
               <Check className="w-2.5 h-2.5" />
               Vista Previa
             </span>
@@ -162,48 +162,48 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Badge superior derecho: Categoría */}
-        <div className="absolute top-2.5 right-2.5 z-10 pointer-events-none">
-          <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-white/90 backdrop-blur-xs text-slate-800 shadow-xs">
+        <div className="absolute top-2 right-2 z-10 pointer-events-none">
+          <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-800 shadow-xs border border-slate-200">
             {product.categoryName}
           </span>
         </div>
       </div>
 
-      {/* --- CUERPO INFORMATIVO DE LA TARJETA --- */}
-      <div className="p-4 flex-1 flex flex-col justify-between bg-white">
+      {/* --- CUERPO INFORMATIVO DE LA TARJETA EN AZUL JOLY --- */}
+      <div className="pt-3 pb-1 px-1 flex-1 flex flex-col justify-between">
         <div>
-          <h3 className="font-bold text-slate-900 text-base leading-tight mb-1">
+          <h3 className="font-extrabold text-white text-base sm:text-lg leading-snug mb-1 drop-shadow-xs line-clamp-2">
             {product.name}
           </h3>
 
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-xl font-extrabold text-[#0284c7]">
+            <span className="text-2xl font-black text-[#EEFF00] drop-shadow-xs tracking-tight">
               {formatCLP(product.boxPrice)}
             </span>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-sky-200 font-medium">
               caja ({formatCLP(product.unitRefPrice)} c/u)
             </span>
           </div>
         </div>
 
         {/* --- SELECTOR DE CAJAS / AGREGAR --- */}
-        <div className="pt-2 border-t border-slate-100 mt-auto">
+        <div className="pt-2 border-t border-white/15 mt-auto">
           {quantity > 0 ? (
-            <div className="flex items-center justify-between bg-sky-50 border border-sky-200 rounded-xl p-1">
+            <div className="flex items-center justify-between bg-black/40 border border-sky-400/30 rounded-xl p-1.5 backdrop-blur-xs">
               <button
                 type="button"
                 onClick={() => onUpdateQuantity(-1)}
-                className="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition-colors"
+                className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
                 title="Quitar una caja"
               >
                 <Minus className="w-4 h-4" />
               </button>
 
               <div className="text-center">
-                <span className="block text-xs font-bold text-slate-900 leading-tight">
+                <span className="block text-xs font-black text-[#EEFF00] leading-tight">
                   {quantity} {quantity === 1 ? 'caja' : 'cajas'}
                 </span>
-                <span className="block text-[10px] text-[#0284c7] font-semibold">
+                <span className="block text-[11px] text-white font-bold">
                   {formatCLP(quantity * product.boxPrice)}
                 </span>
               </div>
@@ -211,20 +211,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <button
                 type="button"
                 onClick={() => onUpdateQuantity(1)}
-                className="w-8 h-8 rounded-lg bg-[#28AEE4] hover:bg-[#209bcc] text-white font-bold flex items-center justify-center shadow-xs transition-colors"
+                className="w-8 h-8 rounded-lg bg-[#EEFF00] hover:bg-yellow-300 text-slate-950 font-black flex items-center justify-center shadow-xs transition-colors cursor-pointer"
                 title="Agregar otra caja"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 stroke-[3]" />
               </button>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => onUpdateQuantity(1)}
-              className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+              className="w-full py-2.5 px-3 rounded-xl bg-[#EEFF00] hover:bg-yellow-300 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-[#EEFF00]" />
-              <span>Agregar Caja</span>
+              <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
+              <span>AGREGAR CAJA</span>
             </button>
           )}
         </div>

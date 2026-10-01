@@ -1,5 +1,5 @@
-import React from 'react';
-import { ShoppingBag, Search, Sparkles, FolderCheck, Truck, Phone, IceCream } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingBag, Search, Sparkles, FolderCheck, Truck, Phone, IceCream, Share2, Check, Copy } from 'lucide-react';
 import { CATEGORIES } from '../data/catalog';
 import { formatCLP } from '../utils/format';
 
@@ -24,6 +24,19 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCart,
   onOpenGuide
 }) => {
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const publicUrl = 'https://ais-pre-6uweitrm2le5rxrbr3sy4u-399415437505.us-east1.run.app';
+
+  const handleCopyLink = () => {
+    const urlToCopy = window.location.hostname.includes('run.app') 
+      ? window.location.href.split('?')[0] 
+      : publicUrl;
+
+    navigator.clipboard.writeText(urlToCopy);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 3000);
+  };
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-900/10 shadow-xs">
       
@@ -62,8 +75,33 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Acciones: Guía Vercel + Carrito */}
-        <div className="flex items-center gap-2.5">
+        {/* Acciones: Compartir Tienda + Guía Fotos + Carrito */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Botón para copiar y compartir enlace de la tienda */}
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+              copiedLink
+                ? 'bg-emerald-600 text-white scale-105'
+                : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200'
+            }`}
+            title="Copiar enlace para enviar a tus clientes"
+          >
+            {copiedLink ? (
+              <>
+                <Check className="w-4 h-4 text-[#EEFF00]" />
+                <span>¡Link copiado!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4 text-sky-600" />
+                <span className="hidden sm:inline">Compartir Tienda</span>
+                <span className="sm:hidden">Link</span>
+              </>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={onOpenGuide}
