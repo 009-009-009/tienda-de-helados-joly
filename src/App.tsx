@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
 import { CheckoutModal } from './components/CheckoutModal';
 import { VercelGuideModal } from './components/VercelGuideModal';
+import { ImageSyncBar } from './components/ImageSyncBar';
 import { Sparkles, ShieldCheck, HelpCircle, Phone, Search, IceCream, Truck, AlertCircle, Clock } from 'lucide-react';
 import { formatCLP } from './utils/format';
 
@@ -237,6 +238,9 @@ export default function App() {
       {/* Contenido Principal / Catálogo en la cuadrícula de tarjetas azules */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6">
         
+        {/* Panel para subir y sincronizar fotos reales en 1 clic */}
+        <ImageSyncBar />
+
         {/* Barra de conteo de productos */}
         <div className="flex items-center justify-between mb-4 text-xs text-slate-800 font-medium bg-white/60 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-slate-200/60 shadow-xs">
           <span>

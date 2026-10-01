@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CatalogProduct } from '../data/catalog';
 import { formatCLP } from '../utils/format';
-import { Plus, Minus, Check, Image as ImageIcon, Upload, Sparkles, Folder, IceCream } from 'lucide-react';
+import { Plus, Minus, Check, Image as ImageIcon, Upload, Folder, Sparkles } from 'lucide-react';
 
 interface ProductCardProps {
   product: CatalogProduct;
@@ -18,17 +18,63 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
+  const [cacheBust, setCacheBust] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const isCassata = product.hasPreservedPhoto;
-  const showImage = !imgError && (isCassata || !!localImagePreview);
-  const imgSrc = localImagePreview || `/imagenes/${product.imageFileName}`;
+  useEffect(() => {
+    const handleImageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ fileName: string }>;
+      if (customEvent.detail?.fileName === product.imageFileName) {
+        setImgError(false);
+        setCacheBust(Date.now());
+      }
+    };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    window.addEventListener('catalog-image-updated', handleImageUpdate);
+    return () => window.removeEventListener('catalog-image-updated', handleImageUpdate);
+  }, [product.imageFileName]);
+
+  const showImage = !imgError && (product.hasPreservedPhoto || !!localImagePreview);
+  const baseImgSrc = localImagePreview || `/imagenes/${product.imageFileName}`;
+  const imgSrc = cacheBust ? `${baseImgSrc}?v=${cacheBust}` : baseImgSrc;
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setLocalImagePreview(url);
-      setImgError(false);
+    if (!file) return;
+
+    // Vista previa instantánea
+    const url = URL.createObjectURL(file);
+    setLocalImagePreview(url);
+    setImgError(false);
+
+    // Guardar permanentemente en servidor
+    try {
+      setIsUploading(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result as string;
+          await fetch('/api/save-catalog-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: product.imageFileName,
+              base64Data
+            })
+          });
+          // Notificar a productos que compartan este archivo
+          window.dispatchEvent(new CustomEvent('catalog-image-updated', {
+            detail: { fileName: product.imageFileName }
+          }));
+        } catch (err) {
+          console.error('Error guardando en servidor:', err);
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setIsUploading(false);
     }
   };
 
@@ -51,7 +97,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           /* Placeholder estilizado sobre fondo azul (Sin fotos de IA) */
           <div className="flex flex-col items-center justify-center text-center p-3 text-white w-full h-full">
             <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center mb-2 shadow-inner text-white">
-              <IceCream className="w-6 h-6 text-white drop-shadow-sm" />
+              <ImageIcon className="w-6 h-6 text-white drop-shadow-sm" />
             </div>
 
             <span className="text-[10px] font-black uppercase tracking-wider bg-slate-950/70 backdrop-blur-xs text-[#EEFF00] px-2.5 py-0.5 rounded-full border border-white/20 mb-1">
@@ -65,10 +111,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <div className="flex items-center gap-1.5">
               <label className="cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold text-slate-950 bg-white hover:bg-sky-50 px-2.5 py-1 rounded-lg shadow-xs transition-colors">
                 <Upload className="w-3 h-3 text-[#0284c7]" />
-                <span>Cargar foto</span>
+                <span>{isUploading ? 'Guardando...' : 'Cargar foto'}</span>
                 <input
                   type="file"
                   accept="image/*"
+                  disabled={isUploading}
                   onChange={handleFileChange}
                   className="hidden"
                 />

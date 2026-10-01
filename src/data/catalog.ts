@@ -171,7 +171,7 @@ export const PRODUCTS: CatalogProduct[] = [
     hasPreservedPhoto: true
   },
 
-  // --- HELADOS INDIVIDUALES (Imágenes de IA removidas) ---
+  // --- HELADOS INDIVIDUALES ---
   {
     id: 'ind-lyn-naranja',
     name: 'Lyn Naranja',
@@ -180,8 +180,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 42,
     boxPrice: 7375,
     unitRefPrice: 175,
-    imageFileName: 'lyn-naranja.png',
-    hasPreservedPhoto: false
+    imageFileName: 'lyn-frutilla.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'ind-lyn-frutilla',
@@ -192,7 +192,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 7375,
     unitRefPrice: 175,
     imageFileName: 'lyn-frutilla.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'ind-yiro-papaya-frambuesa',
@@ -202,8 +202,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 44,
     boxPrice: 7821,
     unitRefPrice: 177,
-    imageFileName: 'yiro-papaya-frambuesa.png',
-    hasPreservedPhoto: false
+    imageFileName: 'yiro-uva-berries.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'ind-yiro-uva-berries',
@@ -214,7 +214,7 @@ export const PRODUCTS: CatalogProduct[] = [
     boxPrice: 7821,
     unitRefPrice: 177,
     imageFileName: 'yiro-uva-berries.png',
-    hasPreservedPhoto: false
+    hasPreservedPhoto: true
   },
   {
     id: 'ind-yiro-limon-manzana',
@@ -224,8 +224,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 44,
     boxPrice: 7821,
     unitRefPrice: 177,
-    imageFileName: 'yiro-limon-manzana.png',
-    hasPreservedPhoto: false
+    imageFileName: 'yiro-uva-berries.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'ind-2-palos-frambuesa',
@@ -351,7 +351,7 @@ export const PRODUCTS: CatalogProduct[] = [
     hasPreservedPhoto: false
   },
 
-  // --- LÍNEA CHOCANTE Y COPAS (Imágenes de IA removidas) ---
+  // --- LÍNEA CHOCANTE Y COPAS ---
   {
     id: 'chocante-tres-leches',
     name: 'Chocante Tres Leches',
@@ -360,8 +360,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 16,
     boxPrice: 7480,
     unitRefPrice: 467,
-    imageFileName: 'chocante-tres-leches.png',
-    hasPreservedPhoto: false
+    imageFileName: 'chocante-crema.frambuesa.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'chocante-frambuesa',
@@ -371,8 +371,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 16,
     boxPrice: 7480,
     unitRefPrice: 467,
-    imageFileName: 'chocante-frambuesa.png',
-    hasPreservedPhoto: false
+    imageFileName: 'chocante-crema.frambuesa.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'chocante-chocolate',
@@ -382,8 +382,8 @@ export const PRODUCTS: CatalogProduct[] = [
     unitsPerBox: 16,
     boxPrice: 7480,
     unitRefPrice: 467,
-    imageFileName: 'chocante-chocolate.png',
-    hasPreservedPhoto: false
+    imageFileName: 'chocante-crema.frambuesa.png',
+    hasPreservedPhoto: true
   },
   {
     id: 'cono-crema-frambuesa',
