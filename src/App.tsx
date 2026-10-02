@@ -85,11 +85,11 @@ export default function App() {
       <section className="bg-white/95 backdrop-blur-md border-b border-slate-900/10 pt-5 pb-6 px-4 sm:px-6 shadow-xs">
         <div className="max-w-6xl mx-auto space-y-4">
           
-          {/* Reemplazo del banner gigante rojo por el Logo Oficial de Distribuidora Mayorista Joly y aviso compacto */}
-          <div className="bg-gradient-to-r from-sky-900 via-blue-900 to-indigo-950 text-white rounded-2xl p-3 sm:p-4 shadow-sm border border-sky-700/50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-              {/* Logo Joly Circular destacado */}
-              <div className="relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/50 shadow-md bg-[#0066FF] flex items-center justify-center">
+          {/* Banner Oficial de Distribuidora Mayorista Joly con aviso de reparto en Temuco */}
+          <div className="bg-gradient-to-r from-[#003865] via-[#02568f] to-[#012d4d] text-white rounded-2xl p-3.5 sm:p-4.5 shadow-md border-2 border-[#38bdf8]/40 flex flex-col md:flex-row items-center justify-between gap-3.5 sm:gap-4">
+            <div className="flex items-center gap-3.5 sm:gap-4 w-full md:w-auto">
+              {/* Logo Joly Circular Oficial intacto */}
+              <div className="relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/60 shadow-md bg-[#0066FF] flex items-center justify-center">
                 <img
                   src="/imagenes/logo_joly_recortado.png"
                   alt="Distribuidora Mayorista Joly"
@@ -105,33 +105,38 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Título de la tienda y aviso de despacho ultra compacto para celular */}
+              {/* Título de la tienda y aviso de reparto en Temuco */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-sm sm:text-base font-black text-white tracking-tight leading-tight">
+                  <h2 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight">
                     Distribuidora Mayorista Joly
                   </h2>
-                  <span className="bg-[#EEFF00] text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-xs">
+                  <span className="bg-[#EEFF00] text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
                     Catálogo Oficial
                   </span>
                 </div>
-                <p className="text-xs text-sky-200 mt-0.5">
+                <p className="text-xs text-sky-200 mt-0.5 font-medium">
                   Confites, Abarrotes y Helados Panda al por Mayor
                 </p>
-                <div className="inline-flex items-center gap-1.5 mt-1.5 text-[11px] font-bold text-amber-300 bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
-                  <span>⏰</span>
-                  <span>Despacho Tempranito: Pedidos antes de las <strong>11:00 AM</strong></span>
+                <div className="inline-flex items-center gap-2 mt-2 text-xs font-bold text-[#EEFF00] bg-black/40 px-3 py-1.5 rounded-xl border border-amber-400/40">
+                  <span className="text-base">🚚</span>
+                  <span>
+                    Prepara tu pedido con anticipación: <strong className="text-white">Miércoles y Jueves reparto en todo Temuco</strong>
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Hora límite compacta en desktop */}
-            <div className="hidden sm:flex flex-col items-center shrink-0 bg-white/10 px-3.5 py-1.5 rounded-xl border border-white/15 text-center">
-              <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wider">
-                Primer Reparto
+            {/* Cuadro destacado de reparto en desktop */}
+            <div className="hidden md:flex flex-col items-center shrink-0 bg-white/10 backdrop-blur-xs px-4 py-2.5 rounded-2xl border border-white/20 text-center shadow-xs">
+              <span className="text-[10px] font-extrabold text-sky-200 uppercase tracking-wider">
+                Días de Reparto
               </span>
               <span className="text-sm font-black text-[#EEFF00]">
-                11:00 AM
+                Miércoles y Jueves
+              </span>
+              <span className="text-[10px] font-bold text-white/90">
+                Todo Temuco
               </span>
             </div>
           </div>

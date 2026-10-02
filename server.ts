@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +35,16 @@ async function startServer() {
       const targetPath = path.join(targetDir, fileName);
       fs.writeFileSync(targetPath, buffer);
       console.log(`[Upload] Imagen guardada en disco: ${targetPath}`);
+
+      // Auto-eliminar fondo blanco para dejar la paleta transparente sobre el azul
+      if (!fileName.includes('logo')) {
+        try {
+          const tmp = `${targetPath}.tmp.png`;
+          execSync(`convert "${targetPath}" -bordercolor white -border 1x1 -alpha set -channel RGBA -fuzz 10% -fill none -floodfill +0+0 white -shave 1x1 -trim +repage "${tmp}" && mv "${tmp}" "${targetPath}"`);
+        } catch (e) {
+          console.warn('Auto transparency skipped:', e);
+        }
+      }
 
       // Guardar alias automáticos para evitar errores por tildes o z/s
       if (fileName.includes('crema-frambue')) {
@@ -69,6 +80,10 @@ async function startServer() {
       return res.status(500).json({ error: err.message || 'Error guardando archivo' });
     }
   });
+
+  // Servir archivos estáticos de public e imágenes
+  app.use('/imagenes', express.static(path.join(__dirname, 'public', 'imagenes')));
+  app.use(express.static(path.join(__dirname, 'public')));
 
   // Montar Vite middlewares en desarrollo
   const vite = await createViteServer({

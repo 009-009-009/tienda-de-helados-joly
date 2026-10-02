@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="bg-slate-950 text-white text-[11px] sm:text-xs py-1.5 px-3 font-medium text-center tracking-tight flex items-center justify-center gap-2">
         <span className="w-2 h-2 rounded-full bg-[#EEFF00] shrink-0 animate-pulse" />
         <span className="truncate">
-          🍦 <strong>Catálogo mayorista online con despacho tempranito</strong> · ¡Haz tu pedido antes de las <span className="text-[#EEFF00] font-bold">11:00 AM</span>!
+          🚚 <strong>Catálogo mayorista online</strong> · Prepara tu pedido con anticipación: <span className="text-[#EEFF00] font-bold">Miércoles y Jueves reparto en todo Temuco</span>
         </span>
       </div>
 
@@ -115,14 +115,14 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenCart}
-            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all active:scale-[0.98] cursor-pointer"
           >
             <ShoppingBag className="w-5 h-5 text-[#EEFF00]" />
             <div className="text-left leading-tight">
               <span className="block text-xs font-black text-[#EEFF00]">
                 {totalBoxes} {totalBoxes === 1 ? 'Caja' : 'Cajas'}
               </span>
-              <span className="block text-[11px] text-slate-200 font-semibold">
+              <span className="block text-[11px] text-emerald-100 font-bold">
                 {formatCLP(totalAmount)}
               </span>
             </div>

@@ -556,7 +556,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           {step === 1 && cart.length > 0 && (
             <button
               onClick={handleGoToCustomerForm}
-              className="px-5 py-2.5 rounded-xl bg-[#28AEE4] hover:bg-[#209bcc] text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-500/20 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
             >
               <span>Continuar con Datos de Entrega</span>
               <ArrowRight className="w-4 h-4" />
@@ -566,7 +566,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           {step === 2 && (
             <button
               onClick={handleGoToConfirmation}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
             >
               <span>Revisar y Enviar Pedido</span>
               <ArrowRight className="w-4 h-4 text-[#EEFF00]" />
