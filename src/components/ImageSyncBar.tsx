@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Upload, CheckCircle2, AlertCircle, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, Sparkles, Image as ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Slot {
   id: string;
+  category: 'cassatas' | 'paletas';
   title: string;
   sub: string;
   fileName: string;
@@ -10,110 +11,176 @@ interface Slot {
 }
 
 const SLOTS: Slot[] = [
+  // --- CASSATAS OFICIALES ---
+  {
+    id: 'cas-pina',
+    category: 'cassatas',
+    title: '1. Cassata Piña',
+    sub: 'Sirve para 1 Litro y 1.8 Litros',
+    fileName: 'cassata-pina.png',
+    targets: ['Cassata 1 L - Piña', 'Cassata 1,8 L - Piña']
+  },
+  {
+    id: 'cas-tradicional',
+    category: 'cassatas',
+    title: '2. Cassata Tradicional',
+    sub: 'Tricolor (sirve para 1 L y 1.8 L)',
+    fileName: 'cassata-tradicional.png',
+    targets: ['Cassata 1 L - Tradicional', 'Cassata 1,8 L - Cassata']
+  },
+  {
+    id: 'cas-trisabor',
+    category: 'cassatas',
+    title: '3. Cassata Trisabor',
+    sub: 'Galleta/chips (sirve para 1 L y 1.8 L)',
+    fileName: 'cassata-trisabor.png',
+    targets: ['Cassata 1 L - Trisabor', 'Cassata 1,8 L - Trisabor']
+  },
+  {
+    id: 'cas-choco-menta',
+    category: 'cassatas',
+    title: '4. Choco Menta / 3 Leches',
+    sub: 'Para Cassata 1.8 Litros',
+    fileName: 'cassata-1-8l-choco-menta-3leches.png',
+    targets: ['Cassata 1,8 L - Chocolate/Menta Chips/3 Leches']
+  },
+  {
+    id: 'cas-crema-frambuesa',
+    category: 'cassatas',
+    title: '5. Crema Frambuesa 1L',
+    sub: 'Para Cassata 1 Litro',
+    fileName: 'cassata-crema-frambuesa.png',
+    targets: ['Cassata 1 L - Crema Frambuesa']
+  },
+  {
+    id: 'cas-frutos-bosque',
+    category: 'cassatas',
+    title: '6. Frutos del Bosque 1L',
+    sub: 'Para Cassata 1 Litro',
+    fileName: 'cassata-frutos-del-bosque.png',
+    targets: ['Cassata 1 L - Frutos del Bosque']
+  },
+  {
+    id: 'cas-chirimoya',
+    category: 'cassatas',
+    title: '7. Chirimoya Alegre 1L',
+    sub: 'Para Cassata 1 Litro',
+    fileName: 'cassata-chirimoya-alegre.png',
+    targets: ['Cassata 1 L - Chirimoya Alegre']
+  },
+
+  // --- PALETAS Y HELADOS INDIVIDUALES ---
   {
     id: 'lyn',
-    title: '1. Helados Lyn',
+    category: 'paletas',
+    title: '8. Helados Lyn',
     sub: 'Para Lyn Naranja y Lyn Frutilla',
     fileName: 'lyn-frutilla.png',
     targets: ['Lyn Naranja', 'Lyn Frutilla']
   },
   {
     id: 'yiro',
-    title: '2. Super Yiro',
+    category: 'paletas',
+    title: '9. Super Yiro',
     sub: 'Para los 3 sabores de Yiro',
     fileName: 'yiro-uva-berries.png',
     targets: ['Yiro Papaya/Frambuesa', 'Yiro Uva/Berries', 'Yiro Limón/Manzana']
   },
   {
     id: 'chocante',
-    title: '3. Línea Chocante',
+    category: 'paletas',
+    title: '10. Línea Chocante',
     sub: 'Para los 3 sabores Chocante',
     fileName: 'chocante-crema.frambuesa.png',
     targets: ['Chocante Tres Leches', 'Chocante Frambuesa', 'Chocante Chocolate']
   },
   {
     id: 'colocolo',
-    title: '4. Colo-Colo y U. de Chile',
+    category: 'paletas',
+    title: '11. Colo-Colo y U. de Chile',
     sub: 'Para Colo Colo Piña y U. de Chile Piña',
     fileName: 'colo-colo-pina.png',
     targets: ['Colo Colo Piña', 'U. de Chile Piña']
   },
   {
     id: 'cono-crema',
-    title: '5. Cono y Copa Crema',
+    category: 'paletas',
+    title: '12. Cono y Copa Crema',
     sub: 'Para Cono Crema y Copa Crema Frambuesa',
     fileName: 'cono-crema-frambuesa.png',
     targets: ['Cono Crema / Frambuesa', 'Copa Crema / Frambuesa']
   },
   {
     id: 'choco-manjar',
-    title: '6. Choco Manjar',
+    category: 'paletas',
+    title: '13. Choco Manjar',
     sub: 'Para Manjar Crocante',
     fileName: 'manjar-crocante.png',
     targets: ['Manjar Crocante (Choco Manjar)']
   },
   {
     id: 'paleta-cassata',
-    title: '7. Paleta Cassatta',
+    category: 'paletas',
+    title: '14. Paleta Cassatta',
     sub: 'Paleta 3 sabores en palo',
     fileName: 'paleta-cassata.png',
     targets: ['Paleta Cassatta']
   },
   {
     id: 'paleta-tunga',
-    title: '8. Paleta Tunga',
+    category: 'paletas',
+    title: '15. Paleta Tunga',
     sub: 'Paleta Vainilla y Chocolate',
     fileName: 'paleta-tunga.png',
     targets: ['Paleta Tunga']
   },
   {
     id: 'chirimoya-alegre',
-    title: '9. Chirimoya Alegre',
+    category: 'paletas',
+    title: '16. Paleta Chirimoya Alegre',
     sub: 'Paleta Chirimoya Alegre',
     fileName: 'paleta-chirimoya-alegre.png',
     targets: ['Chirimoya Alegre']
   },
   {
     id: 'paleta-crema',
-    title: '10. Paleta Crema',
+    category: 'paletas',
+    title: '17. Paleta Crema',
     sub: 'Paleta de Leche Crema',
     fileName: 'paleta-crema.png',
     targets: ['Paleta Crema']
   },
   {
     id: 'choco-panda',
-    title: '11. Choco Panda',
+    category: 'paletas',
+    title: '18. Choco Panda',
     sub: 'Paleta Choco Panda',
     fileName: 'choco-panda.png',
     targets: ['Choco Panda']
   },
   {
     id: 'crema-frambuesa',
-    title: '12. Crema Frambuesa',
+    category: 'paletas',
+    title: '19. Paleta Crema Frambuesa',
     sub: 'Paleta Crema Frambuesa',
     fileName: 'crema-frambuesa.png',
     targets: ['Crema Frambuesa']
   },
   {
     id: 'mora-mora',
-    title: '13. Mora Mora',
+    category: 'paletas',
+    title: '20. Paleta Mora Mora',
     sub: 'Paleta Mora Mora',
     fileName: 'paleta-mora-mora.png',
     targets: ['Mora Mora']
   },
   {
     id: '2-palos-frambuesa',
-    title: '14. 2 Palos Frambuesa',
+    category: 'paletas',
+    title: '21. 2 Palos Frambuesa',
     sub: 'Helado doble de frambuesa',
     fileName: '2-palos-frambuesa.png',
     targets: ['2 Palos Frambuesa']
-  },
-  {
-    id: 'logo-joly',
-    title: '⭐ Logo Oficial Joly',
-    sub: 'Logo circular para cabecera',
-    fileName: 'logo_joly_recortado.png',
-    targets: ['Cabecera y Barra de Tienda']
   }
 ];
 
@@ -121,10 +188,11 @@ export const ImageSyncBar: React.FC = () => {
   const [uploadStatus, setUploadStatus] = useState<Record<string, 'idle' | 'uploading' | 'success' | 'error'>>({});
   const [messages, setMessages] = useState<Record<string, string>>({});
   const [isOpen, setIsOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<'cassatas' | 'paletas'>('cassatas');
 
   const handleUpload = async (slot: Slot, file: File) => {
     setUploadStatus((prev) => ({ ...prev, [slot.id]: 'uploading' }));
-    setMessages((prev) => ({ ...prev, [slot.id]: 'Guardando imagen...' }));
+    setMessages((prev) => ({ ...prev, [slot.id]: 'Guardando en servidor...' }));
 
     try {
       const reader = new FileReader();
@@ -150,10 +218,10 @@ export const ImageSyncBar: React.FC = () => {
             setUploadStatus((prev) => ({ ...prev, [slot.id]: 'success' }));
             setMessages((prev) => ({
               ...prev,
-              [slot.id]: `¡Guardada! Activada en ${slot.targets.length} productos.`
+              [slot.id]: `¡Guardada! Activada en ${slot.targets.length} producto(s).`
             }));
 
-            // Notificar a la app para refrescar imágenes
+            // Notificar a la app para refrescar imágenes en vivo
             window.dispatchEvent(new CustomEvent('catalog-image-updated', {
               detail: { fileName: slot.fileName }
             }));
@@ -173,22 +241,26 @@ export const ImageSyncBar: React.FC = () => {
     }
   };
 
+  const currentSlots = SLOTS.filter((s) => s.category === activeTab);
+
   return (
-    <div className="bg-gradient-to-r from-sky-900 via-sky-800 to-indigo-900 text-white rounded-2xl p-4 sm:p-5 shadow-lg border border-sky-400/30 mb-6">
+    <div className="bg-gradient-to-r from-sky-950 via-sky-900 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-xl border-2 border-sky-400/40 mb-6 transition-all">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#EEFF00] text-slate-950 flex items-center justify-center font-black shadow-xs">
+          <div className="w-10 h-10 rounded-xl bg-[#EEFF00] text-slate-950 flex items-center justify-center font-black text-xl shadow-md shrink-0">
             📸
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-1.5">
-              <span>Carga Rápida de tus Fotos Reales</span>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-black text-white">
+                Panel de Carga Rápida de Fotos Reales
+              </h3>
               <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                100% Permanente
+                Directo a Disco
               </span>
-            </h3>
+            </div>
             <p className="text-xs text-sky-200">
-              Toca el botón amarillo de cada casilla para elegir su foto (quedará centrada automáticamente):
+              Selecciona cualquier foto desde tu computador o celular: se guarda al instante y actualiza la tienda.
             </p>
           </div>
         </div>
@@ -196,49 +268,91 @@ export const ImageSyncBar: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="text-xs font-bold text-sky-200 hover:text-white underline self-start sm:self-auto cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-sky-200 hover:text-white transition-colors cursor-pointer self-start sm:self-auto border border-white/20"
         >
-          {isOpen ? 'Ocultar panel' : 'Mostrar panel de carga'}
+          {isOpen ? (
+            <>
+              <ChevronUp className="w-3.5 h-3.5" />
+              <span>Ocultar panel</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown className="w-3.5 h-3.5" />
+              <span>Abrir panel de carga</span>
+            </>
+          )}
         </button>
       </div>
 
       {isOpen && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 pt-2">
-          {SLOTS.map((slot) => {
-            const status = uploadStatus[slot.id] || 'idle';
-            const msg = messages[slot.id];
+        <div className="pt-2 border-t border-white/15 mt-3">
+          {/* Pestañas para elegir categoría */}
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveTab('cassatas')}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'cassatas'
+                  ? 'bg-[#EEFF00] text-slate-950 shadow-md scale-102'
+                  : 'bg-white/10 text-white hover:bg-white/15'
+              }`}
+            >
+              <span>🍨</span>
+              <span>Cassatas 1L y 1.8L ({SLOTS.filter((s) => s.category === 'cassatas').length})</span>
+            </button>
 
-            return (
-              <div
-                key={slot.id}
-                className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 border border-white/15 flex flex-col justify-between hover:bg-white/15 transition-all"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-extrabold text-[#EEFF00]">
-                      {slot.title}
-                    </span>
-                    {status === 'success' && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    )}
-                  </div>
-                  <p className="text-[11px] text-sky-100 font-medium leading-tight mb-2">
-                    {slot.sub}
-                  </p>
-                  <p className="text-[10px] text-sky-300 font-mono mb-3">
-                    Archivo: {slot.fileName}
-                  </p>
-                </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('paletas')}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'paletas'
+                  ? 'bg-[#EEFF00] text-slate-950 shadow-md scale-102'
+                  : 'bg-white/10 text-white hover:bg-white/15'
+              }`}
+            >
+              <span>🍦</span>
+              <span>Paletas y Helados ({SLOTS.filter((s) => s.category === 'paletas').length})</span>
+            </button>
+          </div>
 
-                <div>
-                  {status === 'success' ? (
-                    <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-lg p-2 text-center text-xs text-emerald-200 font-bold">
-                      ✅ {msg}
+          {/* Grilla de slots */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+            {currentSlots.map((slot) => {
+              const status = uploadStatus[slot.id] || 'idle';
+              const msg = messages[slot.id];
+
+              return (
+                <div
+                  key={slot.id}
+                  className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 border border-white/15 flex flex-col justify-between hover:bg-white/15 transition-all shadow-xs"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-extrabold text-[#EEFF00]">
+                        {slot.title}
+                      </span>
+                      {status === 'success' && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      )}
                     </div>
-                  ) : (
-                    <label className="cursor-pointer flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-lg text-xs font-bold bg-[#EEFF00] hover:bg-yellow-300 text-slate-950 transition-colors shadow-xs">
-                      <Upload className="w-3.5 h-3.5 text-slate-950" />
-                      <span>{status === 'uploading' ? 'Subiendo...' : 'Seleccionar foto'}</span>
+                    <p className="text-[11px] text-sky-100 font-medium leading-tight mb-2">
+                      {slot.sub}
+                    </p>
+                    <p className="text-[10px] text-sky-300 font-mono mb-3">
+                      Archivo: {slot.fileName}
+                    </p>
+                  </div>
+
+                  <div>
+                    {status === 'success' ? (
+                      <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-lg p-2 text-center text-xs text-emerald-200 font-bold mb-2">
+                        ✅ {msg}
+                      </div>
+                    ) : null}
+
+                    <label className="cursor-pointer flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl text-xs font-black bg-[#EEFF00] hover:bg-yellow-300 text-slate-950 transition-transform active:scale-98 shadow-md">
+                      <Upload className="w-4 h-4 text-slate-950" />
+                      <span>{status === 'uploading' ? 'Subiendo...' : 'Seleccionar archivo'}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -250,17 +364,17 @@ export const ImageSyncBar: React.FC = () => {
                         className="hidden"
                       />
                     </label>
-                  )}
 
-                  {status === 'error' && (
-                    <p className="text-[10px] text-red-300 font-bold mt-1.5 text-center">
-                      ⚠️ {msg}
-                    </p>
-                  )}
+                    {status === 'error' && (
+                      <p className="text-[10px] text-red-300 font-bold mt-1.5 text-center">
+                        ⚠️ {msg}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

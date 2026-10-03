@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
 import { CheckoutModal } from './components/CheckoutModal';
 import { VercelGuideModal } from './components/VercelGuideModal';
+import { ImageSyncBar } from './components/ImageSyncBar';
 import { Sparkles, ShieldCheck, HelpCircle, Phone, Search, IceCream, Truck, AlertCircle, Clock } from 'lucide-react';
 import { formatCLP } from './utils/format';
 import { JOLY_OFFICIAL_LOGO } from './assets/officialLogo';
@@ -152,6 +153,9 @@ export default function App() {
               </p>
             </div>
           </div>
+
+          {/* Panel de Carga Rápida de Fotos Reales */}
+          <ImageSyncBar />
 
           {/* Buscador de Helados */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3">

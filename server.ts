@@ -36,13 +36,62 @@ async function startServer() {
       fs.writeFileSync(targetPath, buffer);
       console.log(`[Upload] Imagen guardada en disco: ${targetPath}`);
 
-      // Auto-eliminar fondo blanco para dejar la paleta transparente sobre el azul
-      if (!fileName.includes('logo')) {
+      // Auto-eliminar fondo blanco para dejar la paleta transparente sobre el azul (NO en cassatas ni logos para proteger el helado blanco)
+      if (!fileName.includes('logo') && !fileName.includes('cassata')) {
         try {
           const tmp = `${targetPath}.tmp.png`;
           execSync(`convert "${targetPath}" -bordercolor white -border 1x1 -alpha set -channel RGBA -fuzz 10% -fill none -floodfill +0+0 white -shave 1x1 -trim +repage "${tmp}" && mv "${tmp}" "${targetPath}"`);
         } catch (e) {
           console.warn('Auto transparency skipped:', e);
+        }
+      }
+
+      // Replicar automáticamente en dist/imagenes si existe
+      const distDir = path.join(__dirname, 'dist', 'imagenes');
+      if (fs.existsSync(distDir)) {
+        try {
+          fs.copyFileSync(targetPath, path.join(distDir, fileName));
+        } catch (e) {}
+      }
+
+      // Replicar cassatas que sirven para 1L y 1.8L
+      if (fileName.includes('cassata-pina') || fileName.includes('cassata-piña')) {
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-pina.png'));
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-piña.png'));
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-1-8l-pina.png'));
+        if (fs.existsSync(distDir)) {
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-pina.png'));
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-piña.png'));
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-1-8l-pina.png'));
+        }
+      }
+      if (fileName.includes('cassata-tradicional') || fileName.includes('cassata-1-8l-cassata')) {
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-tradicional.png'));
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-1-8l-cassata.png'));
+        if (fs.existsSync(distDir)) {
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-tradicional.png'));
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-1-8l-cassata.png'));
+        }
+      }
+      if (fileName.includes('cassata-trisabor')) {
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-trisabor.png'));
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-1-8l-trisabor.png'));
+        if (fs.existsSync(distDir)) {
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-trisabor.png'));
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-1-8l-trisabor.png'));
+        }
+      }
+      if (fileName.includes('choco-menta') || fileName.includes('menta-chip') || fileName.includes('menta-chips')) {
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-1-8l-choco-menta-3leches.png'));
+        if (fs.existsSync(distDir)) {
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-1-8l-choco-menta-3leches.png'));
+        }
+      }
+      if (fileName.includes('cassata-crema-frambue')) {
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-crema-frambuesa.png'));
+        fs.copyFileSync(targetPath, path.join(targetDir, 'cassata-crema-frambueza.png'));
+        if (fs.existsSync(distDir)) {
+          fs.copyFileSync(targetPath, path.join(distDir, 'cassata-crema-frambuesa.png'));
         }
       }
 
