@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
 import { CheckoutModal } from './components/CheckoutModal';
 import { VercelGuideModal } from './components/VercelGuideModal';
-import { ImageSyncBar } from './components/ImageSyncBar';
 import { Sparkles, ShieldCheck, HelpCircle, Phone, Search, IceCream, Truck, AlertCircle, Clock } from 'lucide-react';
 import { formatCLP } from './utils/format';
 
@@ -15,6 +14,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [guideSelectedProduct, setGuideSelectedProduct] = useState<CatalogProduct | undefined>(undefined);
+  const [bannerLogoError, setBannerLogoError] = useState<boolean>(false);
 
   // Filtrado de productos por categoría y búsqueda
   const filteredProducts = useMemo(() => {
@@ -89,20 +89,28 @@ export default function App() {
           <div className="bg-gradient-to-r from-[#003865] via-[#02568f] to-[#012d4d] text-white rounded-2xl p-3.5 sm:p-4.5 shadow-md border-2 border-[#38bdf8]/40 flex flex-col md:flex-row items-center justify-between gap-3.5 sm:gap-4">
             <div className="flex items-center gap-3.5 sm:gap-4 w-full md:w-auto">
               {/* Logo Joly Circular Oficial intacto */}
-              <div className="relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/60 shadow-md bg-[#0066FF] flex items-center justify-center">
-                <img
-                  src="/imagenes/logo_joly_recortado.png"
-                  alt="Distribuidora Mayorista Joly"
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1 bg-gradient-to-br from-blue-600 to-indigo-800 pointer-events-none -z-10">
-                  <span className="text-[7px] font-black text-white uppercase tracking-tighter">DISTRIBUIDORA</span>
-                  <span className="text-base font-black text-[#EEFF00]">Joly</span>
-                  <span className="text-[6px] text-white/90 uppercase tracking-tighter">MAYORISTA</span>
-                </div>
+              <div className="relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/80 shadow-md bg-white flex items-center justify-center">
+                {!bannerLogoError ? (
+                  <img
+                    src="/imagenes/logo_joly_recortado.png?v=joly-banner-v3"
+                    alt="Distribuidora Mayorista Joly"
+                    className="w-full h-full object-contain"
+                    onError={() => setBannerLogoError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-1 bg-gradient-to-b from-sky-50 via-white to-sky-100 select-none">
+                    <span className="text-[7px] font-black text-slate-800 uppercase tracking-tighter leading-none mb-0.5">
+                      DISTRIBUIDORA
+                    </span>
+                    <div className="flex items-baseline leading-none my-0.5">
+                      <span className="font-black text-xl sm:text-2xl tracking-tighter text-[#28AEE4]">JO</span>
+                      <span className="font-black text-xl sm:text-2xl tracking-tighter text-[#E31B23]">LY</span>
+                    </div>
+                    <span className="text-[6.5px] font-black text-amber-600 uppercase tracking-tighter leading-none">
+                      MAYORISTA
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Título de la tienda y aviso de reparto en Temuco */}
@@ -260,9 +268,6 @@ export default function App() {
       {/* Contenido Principal / Catálogo en la cuadrícula de tarjetas azules */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6">
         
-        {/* Panel para subir y sincronizar fotos reales en 1 clic */}
-        <ImageSyncBar />
-
         {/* Barra de conteo de productos */}
         <div className="flex items-center justify-between mb-4 text-xs text-slate-800 font-medium bg-white/60 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-slate-200/60 shadow-xs">
           <span>

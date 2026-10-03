@@ -92,21 +92,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
+  const isCassata = product.categoryId.startsWith('cassatas');
+
   return (
     <div className="bg-gradient-to-b from-[#004B87] via-[#003865] to-[#002444] rounded-2xl border-2 border-sky-400/40 overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-200 flex flex-col h-full group text-white">
       
-      {/* --- VITRINA CON FONDO AZUL PANDA OFICIAL (Donde la paleta o cassata reposa como en el catálogo) --- */}
+      {/* --- VITRINA (Paletas sobre fondo azul oficial Panda / Cassatas sobre pedestal blanco limpio) --- */}
       <div className="relative aspect-[4/3] sm:h-52 w-full flex items-center justify-center overflow-hidden bg-gradient-to-b from-[#38bdf8] via-[#1aa4e3] to-[#0284c7] p-2.5 sm:p-3 border-b-2 border-sky-300/40">
         
         {/* Imagen cargada reposando sobre el fondo azul del catálogo oficial */}
         {showImage ? (
-          <img
-            src={centeredImgSrc || imgSrc}
-            alt={product.name}
-            onError={() => setImgError(true)}
-            loading="lazy"
-            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-108 [filter:drop-shadow(0_6px_14px_rgba(0,0,0,0.30))]"
-          />
+          isCassata ? (
+            <div className="w-full h-full flex items-center justify-center p-1">
+              <div className="w-full h-full bg-white rounded-xl shadow-md border border-white/90 p-2 flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
+                <img
+                  src={imgSrc}
+                  alt={product.name}
+                  onError={() => setImgError(true)}
+                  loading="lazy"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+          ) : (
+            <img
+              src={centeredImgSrc || imgSrc}
+              alt={product.name}
+              onError={() => setImgError(true)}
+              loading="lazy"
+              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-108 [filter:drop-shadow(0_6px_14px_rgba(0,0,0,0.30))]"
+            />
+          )
         ) : (
           /* Placeholder estilizado sobre fondo azul */
           <div className="flex flex-col items-center justify-center text-center p-3 text-white w-full h-full">
