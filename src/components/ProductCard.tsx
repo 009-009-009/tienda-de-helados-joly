@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CatalogProduct } from '../data/catalog';
 import { formatCLP } from '../utils/format';
 import { autoCenterAndCropImage } from '../utils/imageCentering';
+import { CASSATA_IMAGES } from '../assets/cassataImages';
 import { Plus, Minus, Check, Image as ImageIcon, Upload, Folder, Sparkles } from 'lucide-react';
 
 interface ProductCardProps {
@@ -36,9 +37,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     return () => window.removeEventListener('catalog-image-updated', handleImageUpdate);
   }, [product.imageFileName]);
 
-  const showImage = !imgError && (product.hasPreservedPhoto || !!localImagePreview);
-  const baseImgSrc = localImagePreview || `/imagenes/${product.imageFileName}`;
-  const imgSrc = cacheBust ? `${baseImgSrc}?v=${cacheBust}` : `${baseImgSrc}?v=v5-cassatas-reales-100`;
+  const cassataDirectImg = CASSATA_IMAGES[product.imageFileName];
+  const showImage = !imgError && (product.hasPreservedPhoto || !!localImagePreview || !!cassataDirectImg);
+  const baseImgSrc = localImagePreview || cassataDirectImg || `/imagenes/${product.imageFileName}`;
+  const imgSrc = localImagePreview
+    ? localImagePreview
+    : (cassataDirectImg
+        ? cassataDirectImg
+        : (cacheBust ? `${baseImgSrc}?v=${cacheBust}` : `${baseImgSrc}?v=v5-cassatas-reales-100`));
 
   // Auto-centrar y recortar espacios en blanco a la derecha para que la paleta quede centrada
   useEffect(() => {

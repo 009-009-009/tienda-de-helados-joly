@@ -95,6 +95,35 @@ async function startServer() {
         }
       }
 
+      // Si es una cassata, sincronizar también src/assets/cassataImages.ts para que Vercel la incruste directamente
+      if (fileName.includes('cassata') || fileName.includes('menta')) {
+        try {
+          const b64DataUrl = `data:image/png;base64,${cleanBase64}`;
+          const cassataFile = path.join(__dirname, 'src', 'assets', 'cassataImages.ts');
+          if (fs.existsSync(cassataFile)) {
+            let content = fs.readFileSync(cassataFile, 'utf-8');
+            if (fileName.includes('pina') || fileName.includes('piña')) {
+              content = content.replace(/const IMG_PINA = ".*?";/, `const IMG_PINA = "${b64DataUrl}";`);
+            } else if (fileName.includes('tradicional') || fileName.includes('1-8l-cassata')) {
+              content = content.replace(/const IMG_TRADICIONAL = ".*?";/, `const IMG_TRADICIONAL = "${b64DataUrl}";`);
+            } else if (fileName.includes('trisabor')) {
+              content = content.replace(/const IMG_TRISABOR = ".*?";/, `const IMG_TRISABOR = "${b64DataUrl}";`);
+            } else if (fileName.includes('choco-menta') || fileName.includes('menta')) {
+              content = content.replace(/const IMG_CHOCO_MENTA = ".*?";/, `const IMG_CHOCO_MENTA = "${b64DataUrl}";`);
+            } else if (fileName.includes('crema-frambue')) {
+              content = content.replace(/const IMG_CREMA_FRAMBUESA = ".*?";/, `const IMG_CREMA_FRAMBUESA = "${b64DataUrl}";`);
+            } else if (fileName.includes('frutos-del-bosque')) {
+              content = content.replace(/const IMG_FRUTOS_BOSQUE = ".*?";/, `const IMG_FRUTOS_BOSQUE = "${b64DataUrl}";`);
+            } else if (fileName.includes('chirimoya')) {
+              content = content.replace(/const IMG_CHIRIMOYA = ".*?";/, `const IMG_CHIRIMOYA = "${b64DataUrl}";`);
+            }
+            fs.writeFileSync(cassataFile, content);
+          }
+        } catch (e) {
+          console.warn('Could not update cassataImages.ts:', e);
+        }
+      }
+
       // Guardar alias automáticos para evitar errores por tildes o z/s
       if (fileName.includes('crema-frambue')) {
         fs.writeFileSync(path.join(targetDir, 'crema-frambuesa.png'), buffer);
