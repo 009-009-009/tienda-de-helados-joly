@@ -26,16 +26,37 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const publicUrl = 'https://ais-pre-6uweitrm2le5rxrbr3sy4u-399415437505.us-east1.run.app';
+  const OFFICIAL_STORE_URL = 'https://tienda-de-helados-joly-4z5x.vercel.app';
 
-  const handleCopyLink = () => {
-    const urlToCopy = window.location.hostname.includes('run.app') 
-      ? window.location.href.split('?')[0] 
-      : publicUrl;
+  const handleCopyLink = async () => {
+    // Si estamos en Vercel, usamos el origen actual; si no, aseguramos su URL oficial de Vercel
+    const currentOrigin = window.location.origin;
+    const isVercel = currentOrigin.includes('vercel.app');
+    const urlToShare = isVercel ? currentOrigin : OFFICIAL_STORE_URL;
 
-    navigator.clipboard.writeText(urlToCopy);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 3000);
+    // Si el cliente está en teléfono móvil, abrir el menú nativo de WhatsApp / Compartir
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Distribuidora Mayorista Joly - Helados Panda Temuco',
+          text: '🍦 Revisa nuestro catálogo mayorista oficial de Helados Panda para Temuco y prepara tu pedido con anticipación:',
+          url: urlToShare
+        });
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 3000);
+        return;
+      } catch (e) {
+        // Si el usuario cancela la ventana de compartir o no es compatible, continúa a copiar al portapapeles
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(urlToShare);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    } catch (e) {
+      console.warn('Error al copiar link:', e);
+    }
   };
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-900/10 shadow-xs">
