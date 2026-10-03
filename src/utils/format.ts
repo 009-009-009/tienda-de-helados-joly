@@ -12,13 +12,16 @@ export function formatBoxes(quantity: number): string {
   return quantity === 1 ? '1 caja' : `${quantity} cajas`;
 }
 
+// Generador de número de pedido correlativo simple y limpio (1, 2, 3, etc.)
 export function generateOrderId(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let result = 'P-';
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  try {
+    const current = parseInt(localStorage.getItem('joly_order_counter') || '0', 10);
+    const next = current + 1;
+    localStorage.setItem('joly_order_counter', next.toString());
+    return `${next}`;
+  } catch {
+    return '1';
   }
-  return result;
 }
 
 export function getCurrentDateTime(): { date: string; time: string } {
@@ -41,7 +44,7 @@ export function buildWhatsAppMessage(
   lines.push('🍦 JOLY & HELADOS PANDA — PEDIDO MAYORISTA');
   lines.push(`🔖 PEDIDO N°: ${orderId}`);
   lines.push(`📅 FECHA: ${date}  ⏰ HORA: ${time}`);
-  lines.push('🚚 Despacho Tempranito (Pedidos antes de las 11:00 AM)');
+  lines.push('🚚 Despacho Tempranito');
   lines.push('──────────────────────────────');
   lines.push('');
   lines.push(`👤 CLIENTE: ${customer.firstName.trim()} ${customer.lastName.trim()}`);
@@ -55,13 +58,13 @@ export function buildWhatsAppMessage(
   cart.forEach((item) => {
     const boxes = formatBoxes(item.quantity);
     const subtotal = formatCLP(item.quantity * item.product.boxPrice);
-    lines.push(`• ${boxes} · ${item.product.name} (${item.product.unitsPerBox} un/caja) — ${subtotal}`);
+    // Formato limpio sin (un/caja) repetitivo solicitado por la cliente
+    lines.push(`• ${boxes} · ${item.product.name} — ${subtotal}`);
   });
 
   const total = cart.reduce((sum, item) => sum + item.quantity * item.product.boxPrice, 0);
 
-  lines.push('');
-  lines.push('──────────────────────────────');
+  // Total integrado directamente al flujo del pedido sin línea separadora intermedia
   lines.push(`💰 TOTAL A PAGAR: ${formatCLP(total)}`);
   lines.push(`💳 FORMA DE PAGO: ${customer.paymentMethod}`);
 

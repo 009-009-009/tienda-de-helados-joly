@@ -40,6 +40,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [copied, setCopied] = useState(false);
   const [orderId, setOrderId] = useState<string>('');
+  const [isOrderSent, setIsOrderSent] = useState(false);
 
   const [customer, setCustomer] = useState<CustomerData & { paymentMethod: string; observations: string }>({
     firstName: '',
@@ -61,6 +62,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleResetCustomer = () => {
+    setCustomer({
+      firstName: '',
+      lastName: '',
+      phone: '',
+      businessName: '',
+      sector: '',
+      address: '',
+      paymentMethod: 'Efectivo',
+      observations: ''
+    });
+    setInvoice({
+      needsInvoice: false,
+      businessName: '',
+      rut: '',
+      activity: '',
+      address: ''
+    });
+    setErrors({});
+  };
 
   if (!isOpen) return null;
 
@@ -94,17 +116,50 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleGoToConfirmation = () => {
     if (validateCustomer()) {
-      const newId = generateOrderId();
-      setOrderId(newId);
+      if (!orderId) {
+        const newId = generateOrderId();
+        setOrderId(newId);
+      }
       setStep(3);
     }
   };
 
-  const orderMessage = buildWhatsAppMessage(cart, customer, invoice, orderId || 'P-1001');
+  const orderMessage = buildWhatsAppMessage(cart, customer, invoice, orderId || '1');
 
   const handleSendWhatsApp = () => {
     const url = getWhatsAppUrl(WHATSAPP_PHONE, orderMessage);
     window.open(url, '_blank');
+    // Vaciar carrito automáticamente para que no queden productos pegados
+    onClearCart();
+    setIsOrderSent(true);
+  };
+
+  const handleNewOrderDifferentClient = () => {
+    onClearCart();
+    handleResetCustomer();
+    setIsOrderSent(false);
+    setOrderId('');
+    setStep(1);
+    onClose();
+  };
+
+  const handleNewOrderSameClient = () => {
+    onClearCart();
+    setCustomer((prev) => ({ ...prev, observations: '' }));
+    setInvoice((prev) => ({ ...prev, needsInvoice: false }));
+    setIsOrderSent(false);
+    setOrderId('');
+    setStep(1);
+    onClose();
+  };
+
+  const handleCloseModal = () => {
+    if (isOrderSent) {
+      setIsOrderSent(false);
+      setOrderId('');
+      setStep(1);
+    }
+    onClose();
   };
 
   const handleCopyOrder = () => {
@@ -256,6 +311,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           {/* PASO 2: FORMULARIO DE CLIENTE Y FACTURA */}
           {step === 2 && (
             <div className="space-y-4">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-700">
+                  Datos de Entrega y Despacho
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetCustomer}
+                  className="text-xs text-rose-500 hover:text-rose-700 font-bold underline underline-offset-2 cursor-pointer flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Limpiar datos / Nuevo cliente</span>
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
@@ -482,53 +551,100 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           {/* PASO 3: CONFIRMACIÓN Y ENVÍO POR WHATSAPP */}
           {step === 3 && (
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
-                  <Check className="w-6 h-6" />
+              {isOrderSent ? (
+                <div className="py-4 px-2 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                    <Check className="w-9 h-9 stroke-[3]" />
+                  </div>
+
+                  <div>
+                    <h4 className="text-xl font-black text-slate-900">
+                      ¡Pedido N° {orderId} Enviado con Éxito!
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
+                      Tu pedido se abrió en WhatsApp y el carrito se ha vaciado automáticamente.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-700 text-left max-w-md mx-auto space-y-1">
+                    <p className="font-semibold text-slate-800 border-b border-slate-200 pb-1 mb-1">
+                      Resumen del pedido registrado:
+                    </p>
+                    <p><strong>Cliente:</strong> {customer.firstName} {customer.lastName}</p>
+                    <p><strong>Negocio:</strong> {customer.businessName}</p>
+                    <p><strong>Dirección:</strong> {customer.address}, {customer.sector}</p>
+                    <p><strong>Pago:</strong> {customer.paymentMethod}</p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2.5 max-w-md mx-auto pt-2">
+                    <button
+                      type="button"
+                      onClick={handleNewOrderDifferentClient}
+                      className="flex-1 py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      Hacer otro pedido (Nuevo cliente)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleNewOrderSameClient}
+                      className="flex-1 py-3 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      Hacer otro pedido (Mismo cliente)
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-bold text-emerald-950 text-sm">
-                    ¡Pedido {orderId} generado con éxito!
-                  </h4>
-                  <p className="text-xs text-emerald-800 mt-0.5">
-                    Envía el detalle oficial a nuestro WhatsApp mayorista ({WHATSAPP_DISPLAY}) con un solo clic.
-                  </p>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
+                      <Check className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-emerald-950 text-sm">
+                        ¡Pedido N° {orderId} listo para enviar!
+                      </h4>
+                      <p className="text-xs text-emerald-800 mt-0.5">
+                        Envía el detalle oficial a nuestro WhatsApp mayorista ({WHATSAPP_DISPLAY}) con un solo clic.
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Previsualización del mensaje */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-900 text-slate-200 font-mono text-xs whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto custom-scrollbar">
-                {orderMessage}
-              </div>
+                  {/* Previsualización del mensaje */}
+                  <div className="border border-slate-200 rounded-2xl p-4 bg-slate-900 text-slate-200 font-mono text-xs whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto custom-scrollbar">
+                    {orderMessage}
+                  </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleSendWhatsApp}
-                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Enviar Pedido por WhatsApp</span>
-                </button>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleSendWhatsApp}
+                      className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Enviar Pedido por WhatsApp</span>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={handleCopyOrder}
-                  className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-600" />
-                      <span>¡Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Copiar texto</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyOrder}
+                      className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-600" />
+                          <span>¡Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>Copiar texto</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -536,7 +652,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {/* Footer con botones de navegación */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-          {step > 1 ? (
+          {!isOrderSent && step > 1 ? (
             <button
               onClick={() => setStep((prev) => (prev - 1) as 1 | 2)}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors flex items-center gap-1"
@@ -546,10 +662,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </button>
           ) : (
             <button
-              onClick={onClose}
+              onClick={handleCloseModal}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-200 transition-colors"
             >
-              Cerrar
+              {isOrderSent ? 'Cerrar y volver al catálogo' : 'Cerrar'}
             </button>
           )}
 
@@ -573,9 +689,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </button>
           )}
 
-          {step === 3 && (
+          {step === 3 && !isOrderSent && (
             <button
-              onClick={onClose}
+              onClick={handleCloseModal}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
             >
               Volver a la tienda

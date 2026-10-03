@@ -154,8 +154,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* Panel de Carga Rápida de Fotos Reales */}
-          <ImageSyncBar />
+          {/* Panel de Carga Rápida reservado para administración privada (?admin=true) */}
+          {typeof window !== 'undefined' && window.location.search.includes('admin=true') && (
+            <ImageSyncBar />
+          )}
 
           {/* Buscador de Helados */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
