@@ -38,7 +38,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const showImage = !imgError && (product.hasPreservedPhoto || !!localImagePreview);
   const baseImgSrc = localImagePreview || `/imagenes/${product.imageFileName}`;
-  const imgSrc = cacheBust ? `${baseImgSrc}?v=${cacheBust}` : `${baseImgSrc}?v=v4-official-cassatas`;
+  const imgSrc = cacheBust ? `${baseImgSrc}?v=${cacheBust}` : `${baseImgSrc}?v=v5-cassatas-reales-100`;
 
   // Auto-centrar y recortar espacios en blanco a la derecha para que la paleta quede centrada
   useEffect(() => {
