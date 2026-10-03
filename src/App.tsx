@@ -6,6 +6,7 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { VercelGuideModal } from './components/VercelGuideModal';
 import { Sparkles, ShieldCheck, HelpCircle, Phone, Search, IceCream, Truck, AlertCircle, Clock } from 'lucide-react';
 import { formatCLP } from './utils/format';
+import { JOLY_OFFICIAL_LOGO } from './assets/officialLogo';
 
 export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -14,7 +15,6 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [guideSelectedProduct, setGuideSelectedProduct] = useState<CatalogProduct | undefined>(undefined);
-  const [bannerLogoError, setBannerLogoError] = useState<boolean>(false);
 
   // Filtrado de productos por categoría y búsqueda
   const filteredProducts = useMemo(() => {
@@ -89,28 +89,12 @@ export default function App() {
           <div className="bg-gradient-to-r from-[#003865] via-[#02568f] to-[#012d4d] text-white rounded-2xl p-3.5 sm:p-4.5 shadow-md border-2 border-[#38bdf8]/40 flex flex-col md:flex-row items-center justify-between gap-3.5 sm:gap-4">
             <div className="flex items-center gap-3.5 sm:gap-4 w-full md:w-auto">
               {/* Logo Joly Circular Oficial intacto */}
-              <div className="relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/80 shadow-md bg-white flex items-center justify-center">
-                {!bannerLogoError ? (
-                  <img
-                    src="/imagenes/logo_joly_recortado.png?v=joly-banner-v3"
-                    alt="Distribuidora Mayorista Joly"
-                    className="w-full h-full object-contain"
-                    onError={() => setBannerLogoError(true)}
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-1 bg-gradient-to-b from-sky-50 via-white to-sky-100 select-none">
-                    <span className="text-[7px] font-black text-slate-800 uppercase tracking-tighter leading-none mb-0.5">
-                      DISTRIBUIDORA
-                    </span>
-                    <div className="flex items-baseline leading-none my-0.5">
-                      <span className="font-black text-xl sm:text-2xl tracking-tighter text-[#28AEE4]">JO</span>
-                      <span className="font-black text-xl sm:text-2xl tracking-tighter text-[#E31B23]">LY</span>
-                    </div>
-                    <span className="text-[6.5px] font-black text-amber-600 uppercase tracking-tighter leading-none">
-                      MAYORISTA
-                    </span>
-                  </div>
-                )}
+              <div className="relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/90 shadow-md bg-white flex items-center justify-center p-0.5">
+                <img
+                  src={JOLY_OFFICIAL_LOGO}
+                  alt="Distribuidora Mayorista Joly"
+                  className="w-full h-full object-contain"
+                />
               </div>
 
               {/* Título de la tienda y aviso de reparto en Temuco */}
@@ -354,13 +338,14 @@ export default function App() {
       {/* Footer original con branding JOLY & HELADOS PANDA */}
       <footer className="mt-auto border-t border-slate-900/10 bg-white/95 backdrop-blur-md py-6 px-4 text-center text-xs text-slate-600">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-            <div className="flex items-baseline">
-              <span className="font-black text-xl tracking-tighter text-[#28AEE4]">JO</span>
-              <span className="font-black text-xl tracking-tighter text-[#E31B23]">LY</span>
-            </div>
+          <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-start">
+            <img
+              src={JOLY_OFFICIAL_LOGO}
+              alt="Distribuidora Joly"
+              className="w-7 h-7 object-contain rounded-full shadow-xs border border-sky-300 bg-white"
+            />
             <span className="font-extrabold text-slate-900 tracking-wide">
-              · HELADOS PANDA
+              Distribuidora Joly · HELADOS PANDA
             </span>
             <span className="font-medium text-slate-600">
               · Venta al por Mayor para Negocios

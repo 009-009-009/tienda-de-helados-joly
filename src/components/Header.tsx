@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShoppingBag, Search, Sparkles, FolderCheck, Truck, Phone, IceCream, Share2, Check, Copy } from 'lucide-react';
 import { CATEGORIES } from '../data/catalog';
 import { formatCLP } from '../utils/format';
+import { JOLY_OFFICIAL_LOGO } from '../assets/officialLogo';
 
 interface HeaderProps {
   selectedCategory: string;
@@ -72,27 +73,24 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Franja de Marca Principal: JOLY & HELADOS PANDA */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
         
-        {/* Logo JOLY + HELADOS PANDA */}
+        {/* Logo Oficial Distribuidora Joly + HELADOS PANDA */}
         <div 
-          className="flex items-center gap-2.5 cursor-pointer group select-none"
+          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none"
           onClick={() => onSelectCategory('all')}
         >
           <img
-            src="/imagenes/logo_joly_recortado.png"
-            alt="Logo Joly"
-            className="w-9 h-9 sm:w-11 sm:h-11 object-contain rounded-full shadow-xs border border-blue-400/40"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
+            src={JOLY_OFFICIAL_LOGO}
+            alt="Distribuidora Mayorista Joly"
+            className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-full shadow-xs border-2 border-sky-400/50 bg-white"
           />
-          <div className="flex items-baseline">
-            <span className="font-black text-2xl sm:text-3xl tracking-tighter text-[#28AEE4]">JO</span>
-            <span className="font-black text-2xl sm:text-3xl tracking-tighter text-[#E31B23]">LY</span>
-          </div>
-
-          <div className="hidden sm:inline-block text-xs font-bold text-slate-700 pl-2.5 border-l-2 border-slate-300 leading-tight">
-            <span>Mayorista</span>
-            <span className="block text-slate-950 font-black text-xs sm:text-sm">HELADOS PANDA</span>
+          
+          <div className="flex flex-col leading-tight">
+            <span className="font-black text-sm sm:text-base text-slate-900 tracking-tight">
+              Distribuidora Joly
+            </span>
+            <span className="text-[11px] sm:text-xs font-bold text-sky-700">
+              Mayorista Helados Panda
+            </span>
           </div>
         </div>
 
