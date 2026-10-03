@@ -108,27 +108,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         
         {/* Imagen cargada reposando sobre el fondo azul del catálogo oficial */}
         {showImage ? (
-          isCassata ? (
-            <div className="w-full h-full flex items-center justify-center p-1">
-              <div className="w-full h-full bg-white rounded-xl shadow-md border border-white/90 p-2 flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
-                <img
-                  src={imgSrc}
-                  alt={product.name}
-                  onError={() => setImgError(true)}
-                  loading="lazy"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            </div>
-          ) : (
-            <img
-              src={centeredImgSrc || imgSrc}
-              alt={product.name}
-              onError={() => setImgError(true)}
-              loading="lazy"
-              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-108 [filter:drop-shadow(0_6px_14px_rgba(0,0,0,0.30))]"
-            />
-          )
+          <img
+            src={centeredImgSrc || imgSrc}
+            alt={product.name}
+            onError={() => setImgError(true)}
+            loading="lazy"
+            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-108 [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.5))_drop-shadow(0_8px_16px_rgba(0,0,0,0.32))]"
+          />
         ) : (
           /* Placeholder estilizado sobre fondo azul */
           <div className="flex flex-col items-center justify-center text-center p-3 text-white w-full h-full">
