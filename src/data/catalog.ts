@@ -264,7 +264,7 @@ export const PRODUCTS: CatalogProduct[] = [
   // --- POSTRES Y ESPECIALES (Imágenes de IA removidas) ---
   {
     id: 'postre-manjar-crocante',
-    name: 'Manjar Crocante (Choco Manjar)',
+    name: 'Manjar Crocante',
     categoryId: 'postres-especiales',
     categoryName: 'Postres y Especiales',
     unitsPerBox: 42,
@@ -375,8 +375,8 @@ export const PRODUCTS: CatalogProduct[] = [
     hasPreservedPhoto: true
   },
   {
-    id: 'chocante-chocolate',
-    name: 'Chocante Chocolate',
+    id: 'chocante-macchiato',
+    name: 'Chocante Macchiato',
     categoryId: 'chocante-copas',
     categoryName: 'Línea Chocante y Copas',
     unitsPerBox: 16,

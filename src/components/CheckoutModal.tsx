@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { CartItem, CustomerData, InvoiceData, WHATSAPP_PHONE, WHATSAPP_DISPLAY } from '../data/catalog';
-import { formatCLP, formatBoxes, buildWhatsAppMessage, getWhatsAppUrl, generateOrderId } from '../utils/format';
+import { 
+  formatCLP, 
+  formatBoxes, 
+  buildWhatsAppMessage, 
+  getWhatsAppUrl, 
+  generateOrderId,
+  formatChileanRut,
+  formatChileanPhone,
+  getChileanPhoneDigitsCount
+} from '../utils/format';
 import { 
   X, 
   Trash2, 
@@ -94,13 +103,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     if (!customer.firstName.trim()) newErrors.firstName = 'Ingresa el nombre del contacto';
     if (!customer.lastName.trim()) newErrors.lastName = 'Ingresa el apellido';
     if (!customer.businessName.trim()) newErrors.businessName = 'Ingresa el nombre de tu negocio o local';
-    if (!customer.phone.trim()) newErrors.phone = 'Ingresa un teléfono de contacto';
+    
+    const phoneCount = getChileanPhoneDigitsCount(customer.phone);
+    if (!customer.phone.trim()) {
+      newErrors.phone = 'Ingresa un teléfono de contacto';
+    } else if (phoneCount < 8) {
+      newErrors.phone = `Faltan números: debes ingresar los 8 dígitos del celular (${phoneCount}/8)`;
+    }
+
     if (!customer.sector.trim()) newErrors.sector = 'Ingresa el sector o comuna';
     if (!customer.address.trim()) newErrors.address = 'Ingresa la dirección de entrega';
 
     if (invoice.needsInvoice) {
       if (!invoice.businessName.trim()) newErrors.invoiceBusinessName = 'Ingresa la razón social';
-      if (!invoice.rut.trim()) newErrors.invoiceRut = 'Ingresa el RUT de la empresa';
+      
+      const cleanRut = invoice.rut.replace(/[^0-9kK]/g, '');
+      if (!invoice.rut.trim()) {
+        newErrors.invoiceRut = 'Ingresa el RUT de la empresa';
+      } else if (cleanRut.length < 8) {
+        newErrors.invoiceRut = 'Ingresa un RUT completo (mínimo 8 dígitos con su dígito verificador)';
+      }
+
       if (!invoice.activity.trim()) newErrors.invoiceActivity = 'Ingresa el giro comercial';
       if (!invoice.address.trim()) newErrors.invoiceAddress = 'Ingresa la dirección tributaria';
     }
@@ -380,20 +403,43 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    Teléfono de contacto *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      Teléfono de contacto (WhatsApp) *
+                    </label>
+                    {customer.phone && (
+                      <span className={`text-[10px] font-bold ${
+                        getChileanPhoneDigitsCount(customer.phone) === 8 
+                          ? 'text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200' 
+                          : 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200'
+                      }`}>
+                        {getChileanPhoneDigitsCount(customer.phone) === 8 
+                          ? '✓ 8 de 8 dígitos' 
+                          : `${getChileanPhoneDigitsCount(customer.phone)}/8 dígitos`}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="tel"
                     value={customer.phone}
-                    onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
-                    placeholder="Ej. +56 9 1234 5678"
-                    className={`w-full h-10 px-3 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#28AEE4]/20 ${
+                    onChange={(e) => {
+                      const formatted = formatChileanPhone(e.target.value);
+                      setCustomer({ ...customer, phone: formatted });
+                    }}
+                    placeholder="+56 9 3456 7899"
+                    maxLength={16}
+                    className={`w-full h-10 px-3 text-sm font-medium bg-slate-50 border rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#28AEE4]/20 ${
                       errors.phone ? 'border-red-400' : 'border-slate-200'
                     }`}
                   />
-                  {errors.phone && <span className="text-[11px] text-red-500">{errors.phone}</span>}
+                  {errors.phone ? (
+                    <span className="text-[11px] text-red-500 mt-0.5 block">{errors.phone}</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">
+                      Formato chileno: escribe los 8 números y se ordenan solos (+56 9 XXXX XXXX)
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -492,18 +538,41 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           value={invoice.businessName}
                           onChange={(e) => setInvoice({ ...invoice, businessName: e.target.value })}
                           placeholder="Ej. Comercializadora SpA"
-                          className="w-full h-9 px-2.5 text-xs bg-white border border-slate-200 rounded-lg"
+                          className={`w-full h-9 px-2.5 text-xs bg-white border rounded-lg ${
+                            errors.invoiceBusinessName ? 'border-red-400' : 'border-slate-200'
+                          }`}
                         />
+                        {errors.invoiceBusinessName && (
+                          <span className="text-[10px] text-red-500 block mt-0.5">{errors.invoiceBusinessName}</span>
+                        )}
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">RUT Empresa *</label>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[11px] font-semibold text-slate-600">RUT Empresa *</label>
+                          {invoice.rut && invoice.rut.replace(/[^0-9kK]/g, '').length >= 8 && (
+                            <span className="text-[10px] font-bold text-emerald-600">✓ Formato listo</span>
+                          )}
+                        </div>
                         <input
                           type="text"
                           value={invoice.rut}
-                          onChange={(e) => setInvoice({ ...invoice, rut: e.target.value })}
-                          placeholder="76.xxx.xxx-k"
-                          className="w-full h-9 px-2.5 text-xs bg-white border border-slate-200 rounded-lg"
+                          onChange={(e) => {
+                            const formatted = formatChileanRut(e.target.value);
+                            setInvoice({ ...invoice, rut: formatted });
+                          }}
+                          placeholder="Ej. 13.455.678-0"
+                          maxLength={12}
+                          className={`w-full h-9 px-2.5 text-xs bg-white border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#28AEE4]/20 ${
+                            errors.invoiceRut ? 'border-red-400' : 'border-slate-200'
+                          }`}
                         />
+                        {errors.invoiceRut ? (
+                          <span className="text-[10px] text-red-500 block mt-0.5">{errors.invoiceRut}</span>
+                        ) : (
+                          <span className="text-[9px] text-slate-400 block mt-0.5">
+                            Puntos y guión automáticos (ej. 13.455.678-0)
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -514,8 +583,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           value={invoice.activity}
                           onChange={(e) => setInvoice({ ...invoice, activity: e.target.value })}
                           placeholder="Minimarket, Heladería, etc."
-                          className="w-full h-9 px-2.5 text-xs bg-white border border-slate-200 rounded-lg"
+                          className={`w-full h-9 px-2.5 text-xs bg-white border rounded-lg ${
+                            errors.invoiceActivity ? 'border-red-400' : 'border-slate-200'
+                          }`}
                         />
+                        {errors.invoiceActivity && (
+                          <span className="text-[10px] text-red-500 block mt-0.5">{errors.invoiceActivity}</span>
+                        )}
                       </div>
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Dirección Tributaria *</label>
@@ -524,8 +598,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           value={invoice.address}
                           onChange={(e) => setInvoice({ ...invoice, address: e.target.value })}
                           placeholder="Dirección fiscal"
-                          className="w-full h-9 px-2.5 text-xs bg-white border border-slate-200 rounded-lg"
+                          className={`w-full h-9 px-2.5 text-xs bg-white border rounded-lg ${
+                            errors.invoiceAddress ? 'border-red-400' : 'border-slate-200'
+                          }`}
                         />
+                        {errors.invoiceAddress && (
+                          <span className="text-[10px] text-red-500 block mt-0.5">{errors.invoiceAddress}</span>
+                        )}
                       </div>
                     </div>
                   </div>

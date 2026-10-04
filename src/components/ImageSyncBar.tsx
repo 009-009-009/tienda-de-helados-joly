@@ -92,7 +92,7 @@ const SLOTS: Slot[] = [
     title: '10. Línea Chocante',
     sub: 'Para los 3 sabores Chocante',
     fileName: 'chocante-crema.frambuesa.png',
-    targets: ['Chocante Tres Leches', 'Chocante Frambuesa', 'Chocante Chocolate']
+    targets: ['Chocante Tres Leches', 'Chocante Frambuesa', 'Chocante Macchiato']
   },
   {
     id: 'colocolo',
@@ -113,10 +113,10 @@ const SLOTS: Slot[] = [
   {
     id: 'choco-manjar',
     category: 'paletas',
-    title: '13. Choco Manjar',
-    sub: 'Para Manjar Crocante',
+    title: '13. Manjar Crocante',
+    sub: 'Paleta Manjar Crocante',
     fileName: 'manjar-crocante.png',
-    targets: ['Manjar Crocante (Choco Manjar)']
+    targets: ['Manjar Crocante']
   },
   {
     id: 'paleta-cassata',

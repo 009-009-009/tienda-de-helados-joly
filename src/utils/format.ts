@@ -12,6 +12,49 @@ export function formatBoxes(quantity: number): string {
   return quantity === 1 ? '1 caja' : `${quantity} cajas`;
 }
 
+// Formateador automático de RUT chileno con puntos y guión (ej: 13.455.678-0 ó 76.123.456-K)
+export function formatChileanRut(value: string): string {
+  const cleaned = value.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
+  if (!cleaned) return '';
+  if (cleaned.length === 1) return cleaned;
+  const body = cleaned.slice(0, -1);
+  const dv = cleaned.slice(-1);
+  const formattedBody = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${formattedBody}-${dv}`;
+}
+
+// Formateador automático de celular chileno (+56 9 XXXX XXXX)
+export function formatChileanPhone(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+
+  let rest = digits;
+  if (rest.startsWith('569')) {
+    rest = rest.slice(3);
+  } else if (rest.startsWith('56')) {
+    rest = rest.slice(2);
+  } else if (rest.startsWith('9')) {
+    rest = rest.slice(1);
+  }
+
+  // Limita a exactamente los 8 dígitos móviles chilenos (imposible pasarse)
+  const mobileDigits = rest.slice(0, 8);
+  if (!mobileDigits) return '+56 9 ';
+
+  if (mobileDigits.length <= 4) {
+    return `+56 9 ${mobileDigits}`;
+  }
+  return `+56 9 ${mobileDigits.slice(0, 4)} ${mobileDigits.slice(4)}`;
+}
+
+export function getChileanPhoneDigitsCount(value: string): number {
+  const digits = value.replace(/\D/g, '');
+  if (digits.startsWith('569')) return Math.min(8, digits.slice(3).length);
+  if (digits.startsWith('56')) return Math.min(8, digits.slice(2).length);
+  if (digits.startsWith('9')) return Math.min(8, digits.slice(1).length);
+  return Math.min(8, digits.length);
+}
+
 // Generador de número de pedido correlativo simple y limpio (1, 2, 3, etc.)
 export function generateOrderId(): string {
   try {
@@ -56,10 +99,9 @@ export function buildWhatsAppMessage(
   lines.push('📦 DETALLE DEL PEDIDO (POR CAJAS):');
 
   cart.forEach((item) => {
-    const boxes = formatBoxes(item.quantity);
     const subtotal = formatCLP(item.quantity * item.product.boxPrice);
-    // Formato limpio sin (un/caja) repetitivo solicitado por la cliente
-    lines.push(`• ${boxes} · ${item.product.name} — ${subtotal}`);
+    // Formato ultra limpio y compacto: solo la cantidad, ya que el encabezado indica (POR CAJAS)
+    lines.push(`• ${item.quantity} · ${item.product.name} — ${subtotal}`);
   });
 
   const total = cart.reduce((sum, item) => sum + item.quantity * item.product.boxPrice, 0);
