@@ -55,13 +55,26 @@ export function getChileanPhoneDigitsCount(value: string): number {
   return Math.min(8, digits.length);
 }
 
-// Generador de número de pedido correlativo simple y limpio (1, 2, 3, etc.)
+// Generador de número de pedido diario: se reinicia automáticamente a 1 cada nuevo día
 export function generateOrderId(): string {
   try {
-    const current = parseInt(localStorage.getItem('joly_order_counter') || '0', 10);
-    const next = current + 1;
-    localStorage.setItem('joly_order_counter', next.toString());
-    return `${next}`;
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    const lastDate = localStorage.getItem('joly_order_last_date');
+    let nextNum = 1;
+
+    // Si es el mismo día, incrementamos el contador del día
+    if (lastDate === todayKey) {
+      const current = parseInt(localStorage.getItem('joly_order_daily_count') || '0', 10);
+      nextNum = current + 1;
+    }
+
+    localStorage.setItem('joly_order_last_date', todayKey);
+    localStorage.setItem('joly_order_daily_count', nextNum.toString());
+    // Limpiamos el contador acumulado histórico anterior para que no interfiera
+    localStorage.removeItem('joly_order_counter');
+
+    return `${nextNum}`;
   } catch {
     return '1';
   }
@@ -84,7 +97,8 @@ export function buildWhatsAppMessage(
   const { date, time } = getCurrentDateTime();
   const lines: string[] = [];
 
-  lines.push('🍦 JOLY & HELADOS PANDA — PEDIDO MAYORISTA');
+  // Encabezado limpio y directo solicitado por la cliente
+  lines.push('🍦 PEDIDO MAYORISTA');
   lines.push(`🔖 PEDIDO N°: ${orderId}`);
   lines.push(`📅 FECHA: ${date}  ⏰ HORA: ${time}`);
   lines.push('🚚 Despacho Tempranito');

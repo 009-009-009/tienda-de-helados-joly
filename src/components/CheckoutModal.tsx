@@ -679,11 +679,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
                       <Check className="w-6 h-6" />
                     </div>
-                    <div>
-                      <h4 className="font-bold text-emerald-950 text-sm">
-                        ¡Pedido N° {orderId} listo para enviar!
-                      </h4>
-                      <p className="text-xs text-emerald-800 mt-0.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="font-bold text-emerald-950 text-sm">
+                          ¡Pedido N° {orderId} listo para enviar!
+                        </h4>
+                        <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-emerald-300 shadow-xs">
+                          <span className="text-[11px] font-bold text-slate-600">N° Pedido:</span>
+                          <input
+                            type="text"
+                            value={orderId}
+                            onChange={(e) => setOrderId(e.target.value)}
+                            className="w-14 text-center text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            title="Número de pedido diario (se reinicia a 1 cada día, editable si necesitas)"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-emerald-800 mt-1">
                         Envía el detalle oficial a nuestro WhatsApp mayorista ({WHATSAPP_DISPLAY}) con un solo clic.
                       </p>
                     </div>
