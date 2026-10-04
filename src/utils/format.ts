@@ -100,7 +100,8 @@ export function buildWhatsAppMessage(
   // Encabezado limpio y directo solicitado por la cliente
   lines.push('🍦 PEDIDO MAYORISTA');
   lines.push(`🔖 PEDIDO N°: ${orderId}`);
-  lines.push(`📅 FECHA: ${date}  ⏰ HORA: ${time}`);
+  lines.push(`📅 FECHA: ${date}`);
+  lines.push(`⏰ HORA: ${time}`);
   lines.push('🚚 Despacho Tempranito');
   lines.push('──────────────────────────────');
   lines.push('');
