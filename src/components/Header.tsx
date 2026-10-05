@@ -13,6 +13,7 @@ interface HeaderProps {
   totalAmount: number;
   onOpenCart: () => void;
   onOpenGuide: () => void;
+  onOpenVendorPanel?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,7 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   totalBoxes,
   totalAmount,
   onOpenCart,
-  onOpenGuide
+  onOpenGuide,
+  onOpenVendorPanel
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -130,6 +132,18 @@ export const Header: React.FC<HeaderProps> = ({
             <FolderCheck className="w-4 h-4 text-[#0284c7]" />
             <span className="hidden md:inline">Fotos Oficiales</span>
           </button>
+
+          {onOpenVendorPanel && (
+            <button
+              type="button"
+              onClick={onOpenVendorPanel}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              title="Abrir Panel del Vendedor (Pedidos, Carga Extra y Cierre de Ruta)"
+            >
+              <Truck className="w-4 h-4 text-[#EEFF00]" />
+              <span className="hidden sm:inline">Vendedor</span>
+            </button>
+          )}
 
           <button
             type="button"

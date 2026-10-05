@@ -5,11 +5,32 @@ import { ProductCard } from './components/ProductCard';
 import { CheckoutModal } from './components/CheckoutModal';
 import { VercelGuideModal } from './components/VercelGuideModal';
 import { ImageSyncBar } from './components/ImageSyncBar';
+import { VendorPanel } from './components/VendorPanel';
 import { Sparkles, ShieldCheck, HelpCircle, Phone, Search, IceCream, Truck, AlertCircle, Clock } from 'lucide-react';
 import { formatCLP } from './utils/format';
 import { JOLY_OFFICIAL_LOGO } from './assets/officialLogo';
 
 export default function App() {
+  const [vistaActiva, setVistaActiva] = useState<'tienda' | 'vendedor'>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('vendedor') || window.location.hash.includes('vendedor')) {
+        return 'vendedor';
+      }
+      const saved = sessionStorage.getItem('joly_vista_activa');
+      if (saved === 'vendedor') return 'vendedor';
+    }
+    return 'tienda';
+  });
+
+  const handleCambiarVista = (nuevaVista: 'tienda' | 'vendedor') => {
+    setVistaActiva(nuevaVista);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('joly_vista_activa', nuevaVista);
+      window.location.hash = nuevaVista === 'vendedor' ? 'vendedor' : '';
+    }
+  };
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -67,6 +88,11 @@ export default function App() {
   const totalBoxes = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.reduce((sum, item) => sum + item.quantity * item.product.boxPrice, 0);
 
+  // Si la vista activa es el Panel del Vendedor, renderizamos el panel operativo
+  if (vistaActiva === 'vendedor') {
+    return <VendorPanel onBackToStore={() => handleCambiarVista('tienda')} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#EEFF00] bg-gradient-to-b from-[#F8FF00] via-[#EEFF00] to-[#E2F700] text-slate-900 flex flex-col selection:bg-slate-900 selection:text-[#EEFF00]">
       
@@ -80,6 +106,7 @@ export default function App() {
         totalAmount={totalAmount}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenGuide={() => handleOpenGuide()}
+        onOpenVendorPanel={() => handleCambiarVista('vendedor')}
       />
 
       {/* Franja superior blanca con el banner amigable original */}
