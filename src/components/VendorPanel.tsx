@@ -650,6 +650,17 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     const cant = productosDisponibles[prodId] || 0;
     if (cant <= 0) return;
 
+    // Verificar si contiene cajas liberadas de PP
+    const origenes = origenProductosDisponibles[prodId] || [];
+    const cantPP = origenes
+      .filter(o => o.origen === 'pedido-parcial' || o.origen === 'pedido-cancelado')
+      .reduce((sum, o) => sum + o.cantidad, 0);
+
+    if (cantPP > 0) {
+      mostrarToast(`⚠️ Este producto incluye ${cantPP} caja(s) de Preventa (PP). Las cajas de pedidos deben resolverse en ruta (venta, destino o sobrante). No se pueden eliminar.`);
+      return;
+    }
+
     // Reducimos las cajas de carga extra
     setCajasCargaExtraRuta(prev => Math.max(0, prev - cant));
 
@@ -672,6 +683,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       delete c[prodId];
       return c;
     });
+    mostrarToast(`↩️ Carga extra de ${getProductInfo(prodId).name} devuelta al catálogo.`);
   };
 
   const handleToggleSeleccionVenta = (prodId: string, disponible: number) => {
@@ -1016,9 +1028,59 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
   // --- AUDITORÍA Y CIERRE DE RUTA (Tu función validarCierreRuta exacta) ---
   const validacionCierre = useMemo(() => {
-    const errores: string[] = [];
+    const errores: { mensaje: string; modulo: 'pp' | 'pd' | 'destino' | 'general' }[] = [];
 
-    // 1. Cajas sin resolver
+    // 1. Pedidos pendientes de visita en Preventa (PP)
+    if (pedidos.length > 0) {
+      const nombresPedidos = pedidos.map(p => `${p.cliente} (${p.productos.reduce((s, x) => s + x.cantidad, 0)} cj)`).join(', ');
+      errores.push({
+        mensaje: `📋 Preventa (PP): Aún te queda(n) ${pedidos.length} pedido(s) por visitar: ${nombresPedidos}. Ve a la sección PP y registra si fue entregado, parcial o cancelado.`,
+        modulo: 'pp'
+      });
+    }
+
+    // 2. Cajas atrapadas en el cajón de venta directa sin confirmar
+    const cajasEnBorrador = productosSeleccionadosPD.reduce((s, id) => s + (cantidadesPD[id] || 0), 0);
+    if (cajasEnBorrador > 0) {
+      errores.push({
+        mensaje: `🛒 Venta Directa (PD): Tienes ${cajasEnBorrador} caja(s) apartadas en el borrador de venta sin presionar "REGISTRAR VENTA" ni cancelarla.`,
+        modulo: 'pd'
+      });
+    }
+
+    // 3. Cajas disponibles en furgón esperando resolución en PD
+    const cajasDisponiblesSinAccion = Object.entries(productosDisponibles).filter(([_, c]) => c > 0);
+    const totalCajasFisicasPD = cajasDisponiblesSinAccion.reduce((s, [_, c]) => s + c, 0);
+    if (totalCajasFisicasPD > 0) {
+      const detalleFisico = cajasDisponiblesSinAccion.map(([id, c]) => `${c} cj de ${getProductInfo(id).name}`).join(', ');
+      errores.push({
+        mensaje: `📦 Venta Directa (PD): Te quedan ${totalCajasFisicasPD} caja(s) físicas en el camión sin resolver (${detalleFisico}). Debes venderlas, asignarlas a Sobrante a bodega, Merma o Compensación.`,
+        modulo: 'pd'
+      });
+    }
+
+    // 4. Destinos pendientes en proceso sin presionar ENVIAR
+    const destinosSinConfirmar = Object.keys(destinosEnProceso).length;
+    if (destinosSinConfirmar > 0) {
+      errores.push({
+        mensaje: `⚠️ Destino en proceso: Tienes ${destinosSinConfirmar} producto(s) en la sección Destino sin presionar el botón "ENVIAR".`,
+        modulo: 'destino'
+      });
+    }
+
+    // 5. Revisar movimientos de destino completados
+    movimientosDestino.forEach((mov, idx) => {
+      if (!mov.destino) errores.push({ mensaje: `⚠️ Movimiento ${idx + 1}: falta definir el destino.`, modulo: 'destino' });
+      if (mov.destino === 'merma' && !mov.motivo) errores.push({ mensaje: `⚠️ Merma de ${mov.nombre}: falta seleccionar el motivo del daño.`, modulo: 'destino' });
+      if (mov.destino === 'compensacion') {
+        if (!mov.nombreCompensacion) errores.push({ mensaje: `🎁 Compensación de ${mov.nombre}: falta nombre y apellido de quien recibe.`, modulo: 'destino' });
+        if (!mov.comunaCompensacion) errores.push({ mensaje: `🎁 Compensación de ${mov.nombre}: falta comuna.`, modulo: 'destino' });
+        if (!mov.rutCompensacion) errores.push({ mensaje: `🎁 Compensación de ${mov.nombre}: falta RUT.`, modulo: 'destino' });
+        if (!mov.telefonoCompensacion) errores.push({ mensaje: `🎁 Compensación de ${mov.nombre}: falta teléfono.`, modulo: 'destino' });
+      }
+    });
+
+    // 6. Cuadre matemático estricto de cajas (sin inventar cajas)
     let cajasVendidas = 0;
     ventasRealizadas.forEach(v => {
       v.productos.forEach(p => {
@@ -1034,37 +1096,11 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     const cajasResueltas = cajasVendidas + cajasDestino;
     const cajasSinResolver = cajasInicialesRuta - cajasResueltas;
 
-    if (cajasSinResolver > 0) {
-      errores.push(`Quedan ${cajasSinResolver} caja(s) sin resolver (sin destino asignado).`);
-    }
-
-    // 2. Cajas atrapadas en el cajón de venta directa sin confirmar
-    const cajasEnBorrador = productosSeleccionadosPD.reduce((s, id) => s + (cantidadesPD[id] || 0), 0);
-    if (cajasEnBorrador > 0) {
-      errores.push(`Tienes ${cajasEnBorrador} caja(s) en el cajón de "Registrar Venta Directa" esperando confirmación o cancelación.`);
-    }
-
-    // 3. Destinos pendientes en proceso sin confirmar
-    const destinosSinConfirmar = Object.keys(destinosEnProceso).length;
-    if (destinosSinConfirmar > 0) {
-      errores.push(`Tienes ${destinosSinConfirmar} movimiento(s) de destino en proceso sin presionar "ENVIAR".`);
-    }
-
-    // 4. Revisar movimientos de destino completados
-    movimientosDestino.forEach((mov, idx) => {
-      if (!mov.destino) errores.push(`Movimiento ${idx + 1}: falta el destino.`);
-      if (mov.destino === 'merma' && !mov.motivo) errores.push(`Merma ${idx + 1}: falta el motivo.`);
-      if (mov.destino === 'compensacion') {
-        if (!mov.nombreCompensacion) errores.push(`Compensación ${idx + 1}: falta nombre y apellido.`);
-        if (!mov.comunaCompensacion) errores.push(`Compensación ${idx + 1}: falta comuna.`);
-        if (!mov.rutCompensacion) errores.push(`Compensación ${idx + 1}: falta RUT.`);
-        if (!mov.telefonoCompensacion) errores.push(`Compensación ${idx + 1}: falta teléfono.`);
-      }
-    });
-
-    // 5. Pedidos pendientes de visita sin atender
-    if (pedidos.length > 0) {
-      errores.push(`Aún quedan ${pedidos.length} pedido(s) pendientes de visitar en la lista de PP.`);
+    if (cajasSinResolver > 0 && totalCajasFisicasPD === 0 && cajasEnBorrador === 0 && pedidos.length === 0) {
+      errores.push({
+        mensaje: `🚨 Descuadre en furgón: Faltan ${cajasSinResolver} caja(s) que salieron en furgón pero no figuran ni en ventas, ni en pedidos, ni en mermas/sobrantes. Debes registrar su destino real.`,
+        modulo: 'general'
+      });
     }
 
     return {
@@ -1073,9 +1109,10 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       cajasVendidas,
       cajasDestino,
       cajasSinResolver: Math.max(0, cajasSinResolver),
-      cajasEnBorrador
+      cajasEnBorrador,
+      totalCajasFisicasPD
     };
-  }, [cajasInicialesRuta, ventasRealizadas, movimientosDestino, destinosEnProceso, pedidos, productosSeleccionadosPD, cantidadesPD]);
+  }, [cajasInicialesRuta, ventasRealizadas, movimientosDestino, destinosEnProceso, pedidos, productosSeleccionadosPD, cantidadesPD, productosDisponibles]);
 
   // Cuadre de cajas para la vista de cierre
   const cajasSobrantesTotal = movimientosDestino.filter(m => m.destino === 'sobrante').reduce((s, m) => s + m.cantidad, 0);
@@ -1163,51 +1200,39 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
   const cajasEnBorradorVenta = productosSeleccionadosPD.reduce((s, id) => s + (cantidadesPD[id] || 0), 0);
 
-  // Resolver automáticamente cajas sin resolver asignándolas como Sobrante a Bodega
+  // Asignar sobrante a bodega exclusivamente con cajas físicas reales que existen en el furgón
   const handleAutoResolverSobranteBodega = () => {
-    // Si hay cajas en el borrador de venta directa, cancelarlo y devolverlas
+    // Si hay cajas en el borrador de venta directa, cancelarlo y devolverlas a disponibles
     if (productosSeleccionadosPD.length > 0) {
       handleDeshacerVenta();
     }
 
-    const cajasFaltantes = validacionCierre.cajasSinResolver;
-    if (cajasFaltantes <= 0) {
-      mostrarToast('¡Todas las cajas ya están resueltas!');
+    const cajasFisicasDisponibles = Object.entries(productosDisponibles).filter(([_, c]) => c > 0);
+    const totalFisico = cajasFisicasDisponibles.reduce((s, [_, c]) => s + c, 0);
+
+    if (totalFisico <= 0) {
+      mostrarToast('⚠️ No tienes cajas físicas en "Productos Disponibles" para enviar a bodega.');
       return;
     }
 
     const nuevosMovimientos: MovimientoDestino[] = [...movimientosDestino];
     const nuevasDisponibles = { ...productosDisponibles };
-    let cajasPorAsignar = cajasFaltantes;
+    let cajasMovidas = 0;
 
-    // Asignar desde productosDisponibles si los hay
-    for (const [prodId, cant] of Object.entries(nuevasDisponibles)) {
-      if (cant > 0 && cajasPorAsignar > 0) {
-        const aMover = Math.min(cant, cajasPorAsignar);
+    for (const [prodId, cant] of cajasFisicasDisponibles) {
+      if (cant > 0) {
         const prod = getProductInfo(prodId);
         nuevosMovimientos.push({
           id: prodId,
           nombre: prod.name,
-          cantidad: aMover,
+          cantidad: cant,
           precio: prod.boxPrice || 9916,
           destino: 'sobrante',
           aptoReventa: true
         });
-        nuevasDisponibles[prodId] -= aMover;
-        cajasPorAsignar -= aMover;
+        nuevasDisponibles[prodId] = 0;
+        cajasMovidas += cant;
       }
-    }
-
-    // Si aún quedan cajas por descuadre de inventario
-    if (cajasPorAsignar > 0) {
-      nuevosMovimientos.push({
-        id: `sobrante-furgon-${Date.now()}`,
-        nombre: 'Sobrante Furgón (Reingreso a Bodega)',
-        cantidad: cajasPorAsignar,
-        precio: 9916,
-        destino: 'sobrante',
-        aptoReventa: true
-      });
     }
 
     setProductosDisponibles(nuevasDisponibles);
@@ -1217,7 +1242,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     setProductosSeleccionadosPD([]);
     setEnModoVenta(false);
 
-    mostrarToast(`✅ Se asignaron ${cajasFaltantes} caja(s) como Sobrante a Bodega. ¡Ruta cuadrada al 100%!`);
+    mostrarToast(`📦 Se enviaron ${cajasMovidas} caja(s) físicas restantes a Sobrante de Bodega.`);
   };
 
   const ejecutarCierreRuta = () => {
@@ -2067,15 +2092,24 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                             </button>
                           </div>
 
-                          {/* Quitar Carga Extra */}
-                          <button
-                            type="button"
-                            onClick={() => handleQuitarCargaExtra(prodId)}
-                            className="w-7 h-7 flex items-center justify-center text-xs text-red-500 hover:bg-red-50 rounded-lg cursor-pointer shrink-0 ml-auto"
-                            title="Quitar producto de carga extra"
-                          >
-                            ✕
-                          </button>
+                          {/* Quitar Carga Extra (Solo si es 100% Carga Extra, jamás si tiene cajas de Preventa PP) */}
+                          {tieneExtra && !tieneLiberadoPP ? (
+                            <button
+                              type="button"
+                              onClick={() => handleQuitarCargaExtra(prodId)}
+                              className="w-7 h-7 flex items-center justify-center text-xs text-red-500 hover:bg-red-50 rounded-lg cursor-pointer shrink-0 ml-auto"
+                              title="Quitar carga extra y devolver al catálogo"
+                            >
+                              ✕
+                            </button>
+                          ) : tieneLiberadoPP ? (
+                            <span
+                              className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-1 rounded-lg ml-auto shrink-0 select-none"
+                              title="Proviene de pedido PP: debe resolverse en ruta"
+                            >
+                              🔒 Resolver en ruta
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -2940,11 +2974,45 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                       <span className="text-base">⚠️</span>
                       <span>La ruta aún no está lista para cerrar:</span>
                     </div>
-                    <ul className="list-disc pl-5 font-normal text-[11px] space-y-1">
+                    <div className="space-y-2">
                       {validacionCierre.errores.map((err, i) => (
-                        <li key={i}>{err}</li>
+                        <div
+                          key={i}
+                          className="p-2.5 rounded-xl bg-white border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs"
+                        >
+                          <div className="text-[11px] font-medium text-slate-800 leading-snug">
+                            {err.mensaje}
+                          </div>
+                          {err.modulo === 'pp' && (
+                            <button
+                              type="button"
+                              onClick={() => setSeccion('pedidos')}
+                              className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-lg shrink-0 cursor-pointer shadow-2xs"
+                            >
+                              Ir a Preventa (PP) →
+                            </button>
+                          )}
+                          {err.modulo === 'pd' && (
+                            <button
+                              type="button"
+                              onClick={() => setSeccion('venta-directa')}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shrink-0 cursor-pointer shadow-2xs"
+                            >
+                              Ir a Venta Directa (PD) →
+                            </button>
+                          )}
+                          {err.modulo === 'destino' && (
+                            <button
+                              type="button"
+                              onClick={() => setSeccion('destino')}
+                              className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] rounded-lg shrink-0 cursor-pointer shadow-2xs"
+                            >
+                              Ir a Destino →
+                            </button>
+                          )}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
 
                     {/* Botones de acción rápida para resolver sin rodeos */}
                     <div className="pt-2 border-t border-amber-200/80 flex flex-col gap-2">
@@ -2958,14 +3026,14 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                         </button>
                       )}
 
-                      {validacionCierre.cajasSinResolver > 0 && (
+                      {validacionCierre.totalCajasFisicasPD > 0 && (
                         <button
                           type="button"
                           onClick={handleAutoResolverSobranteBodega}
                           className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-lg transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
                         >
                           <span>📦</span>
-                          <span>Asignar {validacionCierre.cajasSinResolver} caja(s) restante(s) como Sobrante a Bodega (Cuadrar al 100%)</span>
+                          <span>Enviar las {validacionCierre.totalCajasFisicasPD} caja(s) físicas restantes a Sobrante de Bodega</span>
                         </button>
                       )}
                     </div>
