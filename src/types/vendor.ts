@@ -1,5 +1,3 @@
-import { Product } from './catalog';
-
 export type VendedorId = 'vendedor-1' | 'vendedor-2';
 
 export interface VendedorProfile {

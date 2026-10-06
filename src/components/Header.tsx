@@ -65,11 +65,23 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-900/10 shadow-xs">
       
       {/* Barra superior de despacho / aviso urgente con punto parpadeante */}
-      <div className="bg-slate-950 text-white text-[11px] sm:text-xs py-1.5 px-3 font-medium text-center tracking-tight flex items-center justify-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-[#EEFF00] shrink-0 animate-pulse" />
-        <span className="truncate">
-          🚚 <strong>Catálogo mayorista online</strong> · Prepara tu pedido con anticipación: <span className="text-[#EEFF00] font-bold">Miércoles y Jueves reparto en todo Temuco</span>
-        </span>
+      <div className="bg-slate-950 text-white text-[11px] sm:text-xs py-1.5 px-3 font-medium text-center tracking-tight flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 truncate">
+          <span className="w-2 h-2 rounded-full bg-[#EEFF00] shrink-0 animate-pulse" />
+          <span className="truncate">
+            🚚 <strong>Reparto Temuco</strong>: <span className="text-[#EEFF00] font-bold">Miércoles y Jueves</span>
+          </span>
+        </div>
+        {onOpenVendorPanel && (
+          <button
+            type="button"
+            onClick={onOpenVendorPanel}
+            className="text-[10px] sm:text-xs font-black bg-[#EEFF00] text-slate-950 px-2.5 py-0.5 rounded-full shrink-0 hover:bg-yellow-300 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+          >
+            <span>👤</span>
+            <span>Panel Vendedor →</span>
+          </button>
+        )}
       </div>
 
       {/* Franja de Marca Principal: JOLY & HELADOS PANDA */}
@@ -137,11 +149,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenVendorPanel}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition-all shadow-xs cursor-pointer border border-amber-400/40"
               title="Abrir Panel del Vendedor (Pedidos, Carga Extra y Cierre de Ruta)"
             >
-              <Truck className="w-4 h-4 text-[#EEFF00]" />
-              <span className="hidden sm:inline">Vendedor</span>
+              <Truck className="w-4 h-4 text-[#EEFF00] shrink-0" />
+              <span className="text-[11px] sm:text-xs">Vendedor</span>
             </button>
           )}
 

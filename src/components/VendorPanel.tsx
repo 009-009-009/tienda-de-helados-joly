@@ -47,6 +47,17 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
   const [origenProductosDisponibles, setOrigenProductosDisponibles] = useState<Record<string, OrigenRegistro[]>>({});
   const [ventasRealizadas, setVentasRealizadas] = useState<VentaRealizada[]>([]);
   const [movimientosDestino, setMovimientosDestino] = useState<MovimientoDestino[]>([]);
+  const [pedidosAtendidos, setPedidosAtendidos] = useState<{
+    id: string;
+    cliente: string;
+    cajasPedidas: number;
+    cajasEntregadas: number;
+    cajasLiberadasPD: number;
+    estadoFinal: string;
+    pago: string;
+    factura: string;
+    total: number;
+  }[]>([]);
 
   // Destino temporal antes de confirmar
   const [cantidadesDestino, setCantidadesDestino] = useState<Record<string, number>>({});
@@ -61,6 +72,18 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
   // Carga inicial y totales
   const [cajasCargaExtraRuta, setCajasCargaExtraRuta] = useState<number>(0);
+
+  // Modales in-app para evitar bloqueos de window.alert y window.confirm en iframes
+  const [mostrarModalReiniciar, setMostrarModalReiniciar] = useState(false);
+  const [mostrarModalCierre, setMostrarModalCierre] = useState(false);
+  const [toastMensaje, setToastMensaje] = useState<string | null>(null);
+
+  const mostrarToast = (msg: string) => {
+    setToastMensaje(msg);
+    setTimeout(() => {
+      setToastMensaje(null);
+    }, 3800);
+  };
 
   // Venta Directa: selección para vender
   const [mostrarFormCargaExtra, setMostrarFormCargaExtra] = useState<boolean>(false);
@@ -117,6 +140,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
           setOrigenProductosDisponibles(data.origenProductosDisponibles || {});
           setVentasRealizadas(data.ventasRealizadas || []);
           setMovimientosDestino(data.movimientosDestino || []);
+          setPedidosAtendidos(data.pedidosAtendidos || []);
           setCajasCargaExtraRuta(data.cajasCargaExtraRuta || 0);
           setCantidadesEntrega(data.cantidadesEntrega || {});
           setEstadosEntrega(data.estadosEntrega || {});
@@ -174,6 +198,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
         origenProductosDisponibles,
         ventasRealizadas,
         movimientosDestino,
+        pedidosAtendidos,
         cajasCargaExtraRuta,
         cantidadesEntrega,
         estadosEntrega,
@@ -196,6 +221,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     origenProductosDisponibles,
     ventasRealizadas,
     movimientosDestino,
+    pedidosAtendidos,
     cajasCargaExtraRuta,
     cantidadesEntrega,
     estadosEntrega,
@@ -207,13 +233,8 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     cierreGenerado
   ]);
 
-  // Reiniciar la ruta activa a su estado inicial
-  const handleReiniciarRuta = () => {
-    const confirmar = window.confirm(
-      `¿Deseas reiniciar la ruta de ${vendedorActivo === 'vendedor-1' ? 'Vendedor 1' : 'Vendedor 2'} desde cero?\n\nSe restablecerán los pedidos pendientes y el stock del furgón para comenzar una nueva prueba.`
-    );
-    if (!confirmar) return;
-
+  // Ejecutar el reinicio de la ruta activa a su estado inicial
+  const ejecutarReinicioRuta = () => {
     localStorage.removeItem(`jolyRutaActiva_${vendedorActivo}`);
 
     const defaultPedidos = vendedorActivo === 'vendedor-1'
@@ -232,18 +253,25 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     setOrigenProductosDisponibles({});
     setVentasRealizadas([]);
     setMovimientosDestino([]);
+    setPedidosAtendidos([]);
     setCajasCargaExtraRuta(0);
     setCantidadesEntrega({});
     setEstadosEntrega({});
     setCantidadesVentaSelector({});
     setProductosSeleccionadosPD([]);
     setCantidadesPD({});
+    setDestinosEnProceso({});
+    setCantidadesDestino({});
+    setFacturaVenta('No');
+    setRutFacturaVenta('');
+    setEstadoFacturaVenta('Entregada');
     setEnModoVenta(false);
     setRutaCerrada(false);
     setCierreGenerado(null);
+    setObservacionesCierre('');
     setSeccion('portada');
 
-    alert('🔄 Ruta reiniciada con éxito.');
+    mostrarToast(`🔄 Ruta de ${vendedorActivo === 'vendedor-1' ? 'Vendedor 1' : 'Vendedor 2'} reiniciada desde cero.`);
   };
 
   // Cajas totales que salieron = Cajas de pedidos PP iniciales + Carga extra cargada
@@ -471,12 +499,14 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     const pagoFinal = estadoFinal === 'Cancelado' ? '—' : estadoForm.pago;
 
     if (estadoFinal !== 'Cancelado' && (!pagoFinal || pagoFinal === '—')) {
-      alert('Selecciona una forma de pago antes de guardar.');
+      mostrarToast('⚠️ Selecciona una forma de pago antes de guardar.');
       return;
     }
 
-    // 1. Si el pedido fue Cancelado o Parcial, liberamos las cajas no entregadas al cajón PD
-    if (estadoFinal === 'Cancelado' || estadoFinal === 'Parcial') {
+    // 1. Si hubo cajas no entregadas en el pedido, liberarlas SIEMPRE al cajón PD
+    // (La realidad física del camión manda: si no se entregaron todas las cajas, la diferencia se queda en el furgón)
+    const cajasNoEntregadas = cajasPedidas - cajasEntregadas;
+    if (cajasNoEntregadas > 0 || estadoFinal === 'Cancelado') {
       const nuevasDisponibles = { ...productosDisponibles };
       const nuevosOrigenes = { ...origenProductosDisponibles };
 
@@ -556,6 +586,21 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     };
 
     // Actualizamos el historial de pedidos completados para auditoría
+    setPedidosAtendidos(prev => [
+      ...prev,
+      {
+        id: pedido.id,
+        cliente: pedido.cliente,
+        cajasPedidas,
+        cajasEntregadas,
+        cajasLiberadasPD: Math.max(0, cajasPedidas - cajasEntregadas),
+        estadoFinal: estadoFinal,
+        pago: pagoFinal,
+        factura: estadoForm.factura,
+        total: totalPesos
+      }
+    ]);
+
     setPedidos(prev => prev.filter(p => p.id !== pedido.id));
   };
 
@@ -670,11 +715,11 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     const disponible = productosDisponibles[prodId] || 0;
 
     if (aEnviar <= 0) {
-      alert('Elige una cantidad mayor a 0 con los botones + y - para enviar a destino.');
+      mostrarToast('⚠️ Elige una cantidad mayor a 0 con los botones + y − para enviar a destino.');
       return;
     }
     if (aEnviar > disponible) {
-      alert('La cantidad supera el stock disponible.');
+      mostrarToast('⚠️ La cantidad supera el stock disponible en el furgón.');
       return;
     }
 
@@ -727,34 +772,34 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
   ) => {
     const config = destinosEnProceso[key];
     if (!config || !config.destino) {
-      alert('Selecciona un destino antes de enviar.');
+      mostrarToast('⚠️ Selecciona un destino antes de enviar.');
       return;
     }
 
     if (config.destino === 'merma' && !config.motivo) {
-      alert('Debes indicar el motivo de la merma antes de guardar.');
+      mostrarToast('⚠️ Debes indicar el motivo de la merma antes de guardar.');
       return;
     }
 
     if (config.destino === 'compensacion') {
       if (!config.motivo) {
-        alert('Debes indicar el tipo de compensación.');
+        mostrarToast('⚠️ Debes indicar el tipo de compensación.');
         return;
       }
       if (!config.nombreComp.trim()) {
-        alert('Debes ingresar el nombre y apellido para la compensación.');
+        mostrarToast('⚠️ Debes ingresar el nombre y apellido para la compensación.');
         return;
       }
       if (!config.comunaComp.trim()) {
-        alert('Debes ingresar la comuna para la compensación.');
+        mostrarToast('⚠️ Debes ingresar la comuna para la compensación.');
         return;
       }
       if (!config.rutComp.trim()) {
-        alert('Debes ingresar el RUT para la compensación.');
+        mostrarToast('⚠️ Debes ingresar el RUT para la compensación.');
         return;
       }
       if (!config.telefonoComp.trim()) {
-        alert('Debes ingresar el teléfono para la compensación.');
+        mostrarToast('⚠️ Debes ingresar el teléfono para la compensación.');
         return;
       }
     }
@@ -856,12 +901,15 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
     setProductosSeleccionadosPD([]);
     setCantidadesPD({});
+    setFacturaVenta('No');
+    setRutFacturaVenta('');
+    setEstadoFacturaVenta('Entregada');
     setEnModoVenta(false);
   };
 
   const handlePrepararVenta = () => {
     if (productosSeleccionadosPD.length === 0) {
-      alert('Selecciona al menos un producto disponible para vender.');
+      mostrarToast('⚠️ Selecciona al menos un producto disponible para vender.');
       return;
     }
     setEnModoVenta(true);
@@ -869,13 +917,32 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
   const handleRegistrarVentaDirecta = () => {
     if (!pagoVenta) {
-      alert('Selecciona un medio de pago antes de registrar la venta.');
+      mostrarToast('⚠️ Selecciona un medio de pago antes de registrar la venta.');
       return;
     }
 
     if (pagoVenta === 'Pendiente') {
       if (!clienteVenta.nombre.trim() || !clienteVenta.apellido.trim() || !clienteVenta.celular.trim()) {
-        alert('Para registrar un pago pendiente debes ingresar nombre, apellido y celular del cliente.');
+        mostrarToast('⚠️ Para registrar un pago pendiente debes ingresar nombre, apellido y celular del cliente.');
+        return;
+      }
+    }
+
+    if (facturaVenta === 'Sí') {
+      const rutLimpio = rutFacturaVenta.trim().replace(/[^0-9kK]/g, '');
+      if (!rutLimpio || rutLimpio.length < 8) {
+        mostrarToast('⚠️ Para registrar factura debes ingresar un RUT de cliente válido.');
+        return;
+      }
+
+      const tieneNombreONegocio = Boolean(clienteVenta.nombre.trim() || clienteVenta.negocio.trim());
+      if (!tieneNombreONegocio) {
+        mostrarToast('⚠️ Para registrar factura debes ingresar el Nombre o Negocio del cliente (no puede ser sin registro).');
+        return;
+      }
+
+      if (estadoFacturaVenta === 'Pendiente' && !clienteVenta.celular.trim()) {
+        mostrarToast('⚠️ Para factura pendiente debes ingresar el celular del cliente para enviársela por WhatsApp.');
         return;
       }
     }
@@ -938,9 +1005,10 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
     setMontoEfectivoVenta('');
     setFacturaVenta('No');
     setRutFacturaVenta('');
+    setEstadoFacturaVenta('Entregada');
     setEnModoVenta(false);
 
-    alert(`✅ Venta directa registrada por ${formatCLP(totalVentaPesos)}.`);
+    mostrarToast(`✅ Venta directa registrada por ${formatCLP(totalVentaPesos)}.`);
   };
 
   // Cajas disponibles totales actuales
@@ -970,13 +1038,19 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       errores.push(`Quedan ${cajasSinResolver} caja(s) sin resolver (sin destino asignado).`);
     }
 
-    // 2. Destinos pendientes en proceso sin confirmar
+    // 2. Cajas atrapadas en el cajón de venta directa sin confirmar
+    const cajasEnBorrador = productosSeleccionadosPD.reduce((s, id) => s + (cantidadesPD[id] || 0), 0);
+    if (cajasEnBorrador > 0) {
+      errores.push(`Tienes ${cajasEnBorrador} caja(s) en el cajón de "Registrar Venta Directa" esperando confirmación o cancelación.`);
+    }
+
+    // 3. Destinos pendientes en proceso sin confirmar
     const destinosSinConfirmar = Object.keys(destinosEnProceso).length;
     if (destinosSinConfirmar > 0) {
       errores.push(`Tienes ${destinosSinConfirmar} movimiento(s) de destino en proceso sin presionar "ENVIAR".`);
     }
 
-    // 3. Revisar movimientos de destino completados
+    // 4. Revisar movimientos de destino completados
     movimientosDestino.forEach((mov, idx) => {
       if (!mov.destino) errores.push(`Movimiento ${idx + 1}: falta el destino.`);
       if (mov.destino === 'merma' && !mov.motivo) errores.push(`Merma ${idx + 1}: falta el motivo.`);
@@ -988,7 +1062,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       }
     });
 
-    // 4. Pedidos pendientes de visita sin atender
+    // 5. Pedidos pendientes de visita sin atender
     if (pedidos.length > 0) {
       errores.push(`Aún quedan ${pedidos.length} pedido(s) pendientes de visitar en la lista de PP.`);
     }
@@ -998,14 +1072,28 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       errores: errores,
       cajasVendidas,
       cajasDestino,
-      cajasSinResolver: Math.max(0, cajasSinResolver)
+      cajasSinResolver: Math.max(0, cajasSinResolver),
+      cajasEnBorrador
     };
-  }, [cajasInicialesRuta, ventasRealizadas, movimientosDestino, destinosEnProceso, pedidos]);
+  }, [cajasInicialesRuta, ventasRealizadas, movimientosDestino, destinosEnProceso, pedidos, productosSeleccionadosPD, cantidadesPD]);
 
   // Cuadre de cajas para la vista de cierre
   const cajasSobrantesTotal = movimientosDestino.filter(m => m.destino === 'sobrante').reduce((s, m) => s + m.cantidad, 0);
   const cajasMermasTotal = movimientosDestino.filter(m => m.destino === 'merma').reduce((s, m) => s + m.cantidad, 0);
   const cajasCompensacionesTotal = movimientosDestino.filter(m => m.destino === 'compensacion').reduce((s, m) => s + m.cantidad, 0);
+
+  // Cajas vendidas desglosadas por origen (Preventa PP vs Venta Directa PD)
+  const cajasVendidasPP = useMemo(() => {
+    return ventasRealizadas
+      .filter(v => Boolean(v.pedidoId))
+      .reduce((sum, v) => sum + v.productos.reduce((s, p) => s + (Number(p.cantidad) || 0), 0), 0);
+  }, [ventasRealizadas]);
+
+  const cajasVendidasPD = useMemo(() => {
+    return ventasRealizadas
+      .filter(v => !v.pedidoId)
+      .reduce((sum, v) => sum + v.productos.reduce((s, p) => s + (Number(p.cantidad) || 0), 0), 0);
+  }, [ventasRealizadas]);
 
   // Recaudación
   const totalPedidosPesos = ventasRealizadas.filter(v => v.pedidoId).reduce((s, v) => s + v.total, 0);
@@ -1019,20 +1107,120 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
   const totalCuentasPorCobrar = ventasRealizadas.filter(v => v.pago === 'Pendiente').reduce((s, v) => s + v.total, 0);
   const pendientesCobroCount = ventasRealizadas.filter(v => v.pago === 'Pendiente').length;
 
+  // Resumen de Facturas del día (PP y Ventas directas)
+  const facturasResumen = useMemo(() => {
+    const listado: { cliente: string; origen: string; rut?: string; celular?: string; estado: 'Entregada' | 'Pendiente'; monto: number }[] = [];
+
+    // Facturas de ventas directas
+    ventasRealizadas.forEach(v => {
+      const nombreCli = typeof v.cliente === 'string'
+        ? v.cliente
+        : `${v.cliente.nombre} ${v.cliente.apellido}`.trim() || v.cliente.negocio || 'Cliente Venta Directa';
+      const celCli = typeof v.cliente === 'object' ? v.cliente.celular : undefined;
+
+      if (v.factura && v.factura !== 'No' && v.factura !== '—') {
+        listado.push({
+          cliente: nombreCli,
+          origen: 'Venta Directa',
+          rut: v.rut,
+          celular: celCli,
+          estado: v.estadoFactura === 'Pendiente' ? 'Pendiente' : 'Entregada',
+          monto: v.total
+        });
+      } else if (v.estadoFactura === 'Pendiente') {
+        listado.push({
+          cliente: nombreCli,
+          origen: 'Venta Directa',
+          rut: v.rut,
+          celular: celCli,
+          estado: 'Pendiente',
+          monto: v.total
+        });
+      }
+    });
+
+    // Facturas de pedidos PP atendidos
+    pedidosAtendidos.forEach(p => {
+      if (p.factura && p.factura !== '—' && p.factura !== 'NO') {
+        listado.push({
+          cliente: p.cliente,
+          origen: `Pedido PP (${p.id})`,
+          estado: p.factura === 'Pendiente' ? 'Pendiente' : 'Entregada',
+          monto: p.total
+        });
+      }
+    });
+
+    const pendientes = listado.filter(f => f.estado === 'Pendiente');
+    const entregadas = listado.filter(f => f.estado === 'Entregada');
+
+    return { listado, pendientes, entregadas };
+  }, [ventasRealizadas, pedidosAtendidos]);
+
   const pctCajasResueltas = cajasInicialesRuta > 0
     ? Math.round(((cajasInicialesRuta - validacionCierre.cajasSinResolver) / cajasInicialesRuta) * 100)
     : 100;
 
-  // Confirmar Cierre de Ruta
-  const handleConfirmarCierreRuta = () => {
-    if (!validacionCierre.puedeCerrar) {
-      alert('La ruta aún no está lista para cerrar. Revisa las advertencias en pantalla.');
+  const cajasEnBorradorVenta = productosSeleccionadosPD.reduce((s, id) => s + (cantidadesPD[id] || 0), 0);
+
+  // Resolver automáticamente cajas sin resolver asignándolas como Sobrante a Bodega
+  const handleAutoResolverSobranteBodega = () => {
+    // Si hay cajas en el borrador de venta directa, cancelarlo y devolverlas
+    if (productosSeleccionadosPD.length > 0) {
+      handleDeshacerVenta();
+    }
+
+    const cajasFaltantes = validacionCierre.cajasSinResolver;
+    if (cajasFaltantes <= 0) {
+      mostrarToast('¡Todas las cajas ya están resueltas!');
       return;
     }
 
-    const confirmar = window.confirm('¿Estás segura de que quieres cerrar la ruta y enviarla a Administración?');
-    if (!confirmar) return;
+    const nuevosMovimientos: MovimientoDestino[] = [...movimientosDestino];
+    const nuevasDisponibles = { ...productosDisponibles };
+    let cajasPorAsignar = cajasFaltantes;
 
+    // Asignar desde productosDisponibles si los hay
+    for (const [prodId, cant] of Object.entries(nuevasDisponibles)) {
+      if (cant > 0 && cajasPorAsignar > 0) {
+        const aMover = Math.min(cant, cajasPorAsignar);
+        const prod = getProductInfo(prodId);
+        nuevosMovimientos.push({
+          id: prodId,
+          nombre: prod.name,
+          cantidad: aMover,
+          precio: prod.boxPrice || 9916,
+          destino: 'sobrante',
+          aptoReventa: true
+        });
+        nuevasDisponibles[prodId] -= aMover;
+        cajasPorAsignar -= aMover;
+      }
+    }
+
+    // Si aún quedan cajas por descuadre de inventario
+    if (cajasPorAsignar > 0) {
+      nuevosMovimientos.push({
+        id: `sobrante-furgon-${Date.now()}`,
+        nombre: 'Sobrante Furgón (Reingreso a Bodega)',
+        cantidad: cajasPorAsignar,
+        precio: 9916,
+        destino: 'sobrante',
+        aptoReventa: true
+      });
+    }
+
+    setProductosDisponibles(nuevasDisponibles);
+    setMovimientosDestino(nuevosMovimientos);
+    setDestinosEnProceso({});
+    setCantidadesPD({});
+    setProductosSeleccionadosPD([]);
+    setEnModoVenta(false);
+
+    mostrarToast(`✅ Se asignaron ${cajasFaltantes} caja(s) como Sobrante a Bodega. ¡Ruta cuadrada al 100%!`);
+  };
+
+  const ejecutarCierreRuta = () => {
     const ahora = new Date();
     const idCierre = `CIERRE-${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}-${vendedorActivo.toUpperCase()}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}`;
 
@@ -1075,65 +1263,169 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
     setRutaCerrada(true);
     setCierreGenerado(registro);
-    alert(`🎉 ¡Ruta cerrada y sellada con éxito!\n\nID de Cierre: ${idCierre}\nRegistrado para Administración.`);
+    setMostrarModalCierre(false);
+    mostrarToast(`🎉 ¡Ruta sellada con éxito! ID: ${idCierre}`);
+  };
+
+  // Confirmar Cierre de Ruta
+  const handleConfirmarCierreRuta = () => {
+    if (!validacionCierre.puedeCerrar) {
+      mostrarToast('⚠️ La ruta aún no está lista para cerrar. Revisa las advertencias en pantalla.');
+      return;
+    }
+    setMostrarModalCierre(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7] text-slate-800 pb-20 font-sans">
-      {/* Barra superior institucional y selector de vendedor */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#f7f7f7] text-slate-800 pb-32 sm:pb-20 font-sans">
+      {/* Toast de notificación in-app (libre de bloqueos de alert en iframe) */}
+      {toastMensaje && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[92%] p-3.5 bg-slate-900 text-white text-xs font-bold rounded-2xl shadow-2xl flex items-center justify-between gap-2 border border-slate-700">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🍦</span>
-            <div>
-              <h1 className="text-sm font-black text-slate-900 leading-none">JOLY MAYORISTA</h1>
-              <span className="text-[10px] font-bold text-sky-700 tracking-wider">PANEL DEL VENDEDOR</span>
+            <span className="text-base">ℹ️</span>
+            <span>{toastMensaje}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastMensaje(null)}
+            className="text-slate-400 hover:text-white font-black text-sm px-1.5 cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Modal in-app para Reiniciar Ruta (funciona 100% en iframe y celular con z-[9999]) */}
+      {mostrarModalReiniciar && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border-2 border-rose-300">
+            <div className="text-center">
+              <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-600 mb-2">
+                <span className="text-2xl">🔄</span>
+              </div>
+              <h3 className="text-base font-black text-slate-900">¿Reiniciar ruta de {vendedorActivo === 'vendedor-1' ? 'Vendedor 1' : 'Vendedor 2'}?</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">
+                Se restablecerán todos los pedidos pendientes, la carga extra y el stock en el furgón a su estado inicial para comenzar un nuevo ensayo limpio.
+              </p>
+            </div>
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  ejecutarReinicioRuta();
+                  setMostrarModalReiniciar(false);
+                }}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <span>🔄</span>
+                <span>Sí, reiniciar ruta ahora</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMostrarModalReiniciar(false)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="flex items-center gap-2">
-            {/* Switch de Vendedor 1 y Vendedor 2 */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+      {/* Modal in-app para Confirmar Cierre de Ruta */}
+      {mostrarModalCierre && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border-2 border-emerald-300">
+            <div className="text-center">
+              <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-2">
+                <span className="text-2xl">📤</span>
+              </div>
+              <h3 className="text-base font-black text-slate-900">¿Cerrar y enviar ruta?</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">
+                Se sellará el cierre de <strong>{vendedorActivo === 'vendedor-1' ? 'Vendedor 1' : 'Vendedor 2'}</strong> con todas las cajas y dineros auditados para Administración.
+              </p>
+            </div>
+            <div className="space-y-2 pt-2">
               <button
                 type="button"
-                onClick={() => setVendedorActivo('vendedor-1')}
-                className={`px-2 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                  vendedorActivo === 'vendedor-1'
-                    ? 'bg-sky-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={ejecutarCierreRuta}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                Vendedor 1
+                <span>📤</span>
+                <span>Sí, cerrar y enviar a Administración</span>
               </button>
               <button
                 type="button"
-                onClick={() => setVendedorActivo('vendedor-2')}
-                className={`px-2 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                  vendedorActivo === 'vendedor-2'
-                    ? 'bg-sky-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => setMostrarModalCierre(false)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
               >
-                Vendedor 2
+                Revisar más
               </button>
             </div>
+          </div>
+        </div>
+      )}
 
-            <button
-              type="button"
-              onClick={handleReiniciarRuta}
-              className="px-2.5 py-1 text-xs font-bold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer border border-rose-200"
-              title="Reiniciar ruta activa desde cero para una nueva prueba"
-            >
-              🔄 Reiniciar
-            </button>
+      {/* Barra superior institucional 100% optimizada para celulares y pantallas táctiles */}
+      <header className="bg-white border-b border-slate-200 px-3 py-2.5 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-xl mx-auto space-y-2">
+          {/* Fila 1: Logo institucional + Botón Volver a la Tienda (destacado y amplio) */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl leading-none">🍦</span>
+              <div>
+                <h1 className="text-xs sm:text-sm font-black text-slate-900 leading-tight tracking-wide">JOLY MAYORISTA</h1>
+                <span className="text-[10px] font-bold text-sky-700 block tracking-wider">PANEL DEL VENDEDOR</span>
+              </div>
+            </div>
 
             <button
               type="button"
               onClick={onBackToStore}
-              className="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-              title="Volver a la tienda pública"
+              className="px-3.5 py-2 text-xs font-black text-white bg-slate-950 hover:bg-slate-800 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 active:scale-[0.98]"
+              title="Volver al catálogo público de la tienda"
             >
-              🏪 Tienda
+              <span>🏪</span>
+              <span>Volver a Tienda</span>
+            </button>
+          </div>
+
+          {/* Fila 2: Selector Vendedor 1 / Vendedor 2 / Reiniciar en 3 columnas iguales */}
+          <div className="grid grid-cols-3 gap-1.5 text-center">
+            <button
+              type="button"
+              onClick={() => setVendedorActivo('vendedor-1')}
+              className={`py-2 px-1 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 min-h-[40px] ${
+                vendedorActivo === 'vendedor-1'
+                  ? 'bg-sky-600 text-white shadow-xs ring-2 ring-sky-300'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+              }`}
+            >
+              <span>👤</span>
+              <span>Vendedor 1</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setVendedorActivo('vendedor-2')}
+              className={`py-2 px-1 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 min-h-[40px] ${
+                vendedorActivo === 'vendedor-2'
+                  ? 'bg-sky-600 text-white shadow-xs ring-2 ring-sky-300'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+              }`}
+            >
+              <span>👤</span>
+              <span>Vendedor 2</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMostrarModalReiniciar(true)}
+              className="py-2 px-1 rounded-xl text-xs font-black text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 transition-colors cursor-pointer border border-rose-200 shadow-2xs flex items-center justify-center gap-1 min-h-[40px] active:scale-[0.98]"
+              title="Reiniciar ruta activa desde cero para una nueva prueba"
+            >
+              <span>🔄</span>
+              <span>Reiniciar</span>
             </button>
           </div>
         </div>
@@ -1234,6 +1526,27 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                 <span className="text-slate-400 group-hover:translate-x-1 transition-transform">→</span>
               </div>
             </button>
+
+            {/* Accesos rápidos de Portada para celulares y tablet */}
+            <div className="pt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setMostrarModalReiniciar(true)}
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-rose-50 text-rose-700 font-black text-xs border border-rose-200 shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+              >
+                <span>🔄</span>
+                <span>Reiniciar ruta</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onBackToStore}
+                className="py-3 px-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-black text-xs border border-slate-300 shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+              >
+                <span>🏪</span>
+                <span>Ir a Tienda</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1836,27 +2149,36 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                   </div>
                 </div>
 
-                {/* Datos del cliente (Opcional si es al paso, Obligatorio si es Pendiente) */}
+                {/* Datos del cliente (Opcional si es al paso, Obligatorio si es Pendiente o Factura) */}
                 <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-slate-700 block">DATOS DEL CLIENTE (Opcional al contado, obligatorio si es fiado):</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-700 block">
+                      DATOS DEL CLIENTE {pagoVenta === 'Pendiente' || facturaVenta === 'Sí' ? '(OBLIGATORIO)' : '(OPCIONAL AL PASO)'}:
+                    </span>
+                    {(pagoVenta === 'Pendiente' || facturaVenta === 'Sí') && (
+                      <span className="text-[10px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                        {facturaVenta === 'Sí' ? 'Requiere datos para factura' : 'Cobro pendiente'}
+                      </span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder="Nombre *"
+                      placeholder={`Nombre ${pagoVenta === 'Pendiente' || facturaVenta === 'Sí' ? '*' : ''}`}
                       value={clienteVenta.nombre}
                       onChange={(e) => setClienteVenta({ ...clienteVenta, nombre: e.target.value })}
                       className="h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
                     />
                     <input
                       type="text"
-                      placeholder="Apellido *"
+                      placeholder={`Apellido ${pagoVenta === 'Pendiente' ? '*' : ''}`}
                       value={clienteVenta.apellido}
                       onChange={(e) => setClienteVenta({ ...clienteVenta, apellido: e.target.value })}
                       className="h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
                     />
                     <input
                       type="text"
-                      placeholder="Negocio"
+                      placeholder="Negocio / Razón Social"
                       value={clienteVenta.negocio}
                       onChange={(e) => setClienteVenta({ ...clienteVenta, negocio: e.target.value })}
                       className="h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
@@ -1877,7 +2199,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                     />
                     <input
                       type="tel"
-                      placeholder="Celular *"
+                      placeholder={`Celular WhatsApp ${pagoVenta === 'Pendiente' || estadoFacturaVenta === 'Pendiente' ? '*' : ''}`}
                       value={clienteVenta.celular}
                       onChange={(e) => setClienteVenta({ ...clienteVenta, celular: formatChileanPhone(e.target.value) })}
                       className="h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
@@ -1946,29 +2268,57 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                 })()}
 
                 {/* Factura */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">¿FACTURA?</label>
-                    <select
-                      value={facturaVenta}
-                      onChange={(e) => setFacturaVenta(e.target.value)}
-                      className="w-full h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
-                    >
-                      <option value="No">No</option>
-                      <option value="Sí">Sí</option>
-                    </select>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">¿FACTURA?</label>
+                      <select
+                        value={facturaVenta}
+                        onChange={(e) => setFacturaVenta(e.target.value)}
+                        className="w-full h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold"
+                      >
+                        <option value="No">No</option>
+                        <option value="Sí">Sí</option>
+                      </select>
+                    </div>
+
+                    {facturaVenta === 'Sí' && (
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">RUT CLIENTE</label>
+                        <input
+                          type="text"
+                          value={rutFacturaVenta}
+                          onChange={(e) => setRutFacturaVenta(formatChileanRut(e.target.value))}
+                          placeholder="11.222.333-4"
+                          className="w-full h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {facturaVenta === 'Sí' && (
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-700 block mb-1">RUT</label>
-                      <input
-                        type="text"
-                        value={rutFacturaVenta}
-                        onChange={(e) => setRutFacturaVenta(formatChileanRut(e.target.value))}
-                        placeholder="11.222.333-4"
-                        className="w-full h-8 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
-                      />
+                    <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 space-y-1.5 text-xs">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[11px] font-bold text-amber-950 block">ESTADO DE FACTURA</label>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          estadoFacturaVenta === 'Entregada' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-900'
+                        }`}>
+                          {estadoFacturaVenta === 'Entregada' ? '✓ Entregada' : '⏳ Pendiente'}
+                        </span>
+                      </div>
+                      <select
+                        value={estadoFacturaVenta}
+                        onChange={(e) => setEstadoFacturaVenta(e.target.value)}
+                        className="w-full h-8 px-2 text-xs bg-white border border-amber-300 rounded-lg font-bold"
+                      >
+                        <option value="Entregada">Entregada (emitida y entregada en ruta)</option>
+                        <option value="Pendiente">Pendiente (sin internet / enviar mañana por WhatsApp)</option>
+                      </select>
+                      {estadoFacturaVenta === 'Pendiente' && (
+                        <p className="text-[10px] text-amber-800 font-medium leading-tight">
+                          📲 Quedará registrada en Cierre de Ruta como <strong>Factura pendiente PD</strong> para que Administración la envíe.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2166,37 +2516,49 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
               <div className="divide-y divide-slate-100 text-xs">
                 <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">📋 Pedidos (PP)</span>
-                  <strong className="text-slate-900">{pedidosInicialesCajas}</strong>
+                  <span className="text-slate-600">📋 Cajas de Pedidos iniciales (PP)</span>
+                  <div className="text-right">
+                    <strong className="text-slate-900">{pedidosInicialesCajas} cajas</strong>
+                    <span className="text-[10px] text-slate-400 block font-normal">({pedidosInicialesCount} pedidos asignados)</span>
+                  </div>
                 </div>
                 <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">💰 Carga extra</span>
-                  <strong className="text-slate-900">{cajasCargaExtraRuta}</strong>
+                  <span className="text-slate-600">💰 Cajas de Carga extra cargadas</span>
+                  <strong className="text-slate-900">{cajasCargaExtraRuta} cajas</strong>
                 </div>
-                <div className="py-1.5 flex justify-between font-bold bg-slate-50 px-2 rounded">
-                  <span className="text-slate-800">📦 Total que salió</span>
-                  <strong className="text-slate-900">{cajasInicialesRuta}</strong>
+                <div className="py-1.5 flex justify-between font-bold bg-slate-100 px-2 rounded">
+                  <span className="text-slate-800">📦 Total cajas que salieron en furgón</span>
+                  <strong className="text-slate-900">{cajasInicialesRuta} cajas</strong>
                 </div>
 
                 <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">🛒 Cajas vendidas</span>
-                  <strong className="text-slate-900">{validacionCierre.cajasVendidas}</strong>
+                  <span className="text-slate-600">🛒 Cajas vendidas en ruta</span>
+                  <strong className="text-slate-900">{validacionCierre.cajasVendidas} cajas</strong>
+                </div>
+                <div className="py-1 pl-4 flex justify-between text-[11px] text-slate-500 bg-slate-50/50">
+                  <span>↳ Entregadas en {ventasRealizadas.filter(v => Boolean(v.pedidoId)).length} pedidos PP</span>
+                  <strong className="text-slate-700">{cajasVendidasPP} cajas</strong>
+                </div>
+                <div className="py-1 pl-4 flex justify-between text-[11px] text-slate-500 bg-slate-50/50">
+                  <span>↳ Vendidas en {ventasRealizadas.filter(v => !v.pedidoId).length} ventas directas (PD)</span>
+                  <strong className="text-slate-700">{cajasVendidasPD} cajas</strong>
+                </div>
+
+                <div className="py-1.5 flex justify-between">
+                  <span className="text-slate-600">📦 Cajas sobrantes a bodega</span>
+                  <strong className="text-slate-900">{cajasSobrantesTotal} cajas</strong>
                 </div>
                 <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">📦 Sobrantes (bodega)</span>
-                  <strong className="text-slate-900">{cajasSobrantesTotal}</strong>
+                  <span className="text-slate-600">⚠️ Cajas en mermas</span>
+                  <strong className="text-slate-900">{cajasMermasTotal} cajas</strong>
                 </div>
                 <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">⚠️ Mermas</span>
-                  <strong className="text-slate-900">{cajasMermasTotal}</strong>
+                  <span className="text-slate-600">🎁 Cajas en compensaciones</span>
+                  <strong className="text-slate-900">{cajasCompensacionesTotal} cajas</strong>
                 </div>
                 <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">🎁 Compensaciones</span>
-                  <strong className="text-slate-900">{cajasCompensacionesTotal}</strong>
-                </div>
-                <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">💳 Pendientes de cobro</span>
-                  <strong className="text-slate-900">{pendientesCobroCount}</strong>
+                  <span className="text-slate-600">💳 Cuentas pendientes de cobro</span>
+                  <strong className="text-slate-900">{pendientesCobroCount} cliente(s)</strong>
                 </div>
 
                 <div className={`py-2 flex justify-between font-black px-2 rounded mt-1 ${
@@ -2205,9 +2567,177 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                     : 'bg-amber-100 text-amber-950'
                 }`}>
                   <span>⚠️ Cajas sin resolver</span>
-                  <span>{validacionCierre.cajasSinResolver}</span>
+                  <span>{validacionCierre.cajasSinResolver} cajas</span>
+                </div>
+
+                {/* Movimientos de ruta (Sobrante, Mermas, Compensaciones) */}
+                {movimientosDestino.length > 0 && (
+                  <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                      📋 Movimientos de ruta ({movimientosDestino.length})
+                    </span>
+                    <div className="space-y-1">
+                      {movimientosDestino.map((m, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-[11px] p-2 rounded-lg bg-slate-50 border border-slate-200">
+                          <div>
+                            <span className="font-bold text-slate-800">
+                              {m.destino === 'sobrante' && '📦 Sobrante'}
+                              {m.destino === 'merma' && '🗑️ Merma'}
+                              {m.destino === 'compensacion' && '🎁 Compensación'}
+                            </span>
+                            <span className="text-slate-600 font-medium ml-1">
+                              — {m.motivo ? m.motivo : m.destino === 'sobrante' ? 'Apto para reventa' : ''}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                              {m.nombre} ({m.cantidad} cj) {m.nombreCompensacion ? `• Para: ${m.nombreCompensacion}` : ''}
+                            </span>
+                          </div>
+                          <strong className="text-slate-700 text-xs">{formatCLP(m.precio * m.cantidad)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 1.1 TRAZABILIDAD DE PEDIDOS Y VENTAS (PP atendidos, PD realizadas, Total ventas) */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📊</span> TRAZABILIDAD DE OPERACIÓN
+                </h3>
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800">
+                  {ventasRealizadas.length} ventas registradas
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200">
+                  <span className="text-[10px] font-extrabold text-sky-800 uppercase block">PP atendidos</span>
+                  <strong className="text-base font-black text-sky-950 block">{pedidosAtendidos.length}</strong>
+                  <span className="text-[10px] text-sky-700 font-bold block">{cajasVendidasPP} cajas</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <span className="text-[10px] font-extrabold text-emerald-800 uppercase block">PD realizadas</span>
+                  <strong className="text-base font-black text-emerald-950 block">{ventasRealizadas.filter(v => !v.pedidoId).length}</strong>
+                  <span className="text-[10px] text-emerald-700 font-bold block">{cajasVendidasPD} cajas</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
+                  <span className="text-[10px] font-extrabold text-purple-800 uppercase block">Total ventas</span>
+                  <strong className="text-base font-black text-purple-950 block">{ventasRealizadas.length}</strong>
+                  <span className="text-[10px] text-purple-700 font-bold block">{validacionCierre.cajasVendidas} cajas</span>
                 </div>
               </div>
+
+              <div className="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 leading-relaxed font-medium">
+                ✨ <strong>Trazabilidad limpia:</strong> Se visitaron <strong>{pedidosAtendidos.length} pedidos PP</strong> ({cajasVendidasPP} cajas entregadas) y se efectuaron <strong>{ventasRealizadas.filter(v => !v.pedidoId).length} ventas directas PD</strong> ({cajasVendidasPD} cajas vendidas), totalizando exactamente <strong>{ventasRealizadas.length} ventas registradas</strong> con <strong>{validacionCierre.cajasVendidas} cajas vendidas</strong>.
+              </div>
+            </div>
+
+            {/* 1.2 ESTADO DE PEDIDOS (PP) */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span>📋</span> ESTADO DE PEDIDOS
+                </span>
+                <span className="text-[11px] font-bold text-slate-500">
+                  {pedidosAtendidos.length} atendido(s)
+                </span>
+              </h3>
+
+              {pedidosAtendidos.length === 0 ? (
+                <div className="text-center py-4 text-xs text-slate-400">
+                  Aún no has atendido pedidos de preventa (PP).
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {/* Pedidos completos */}
+                  {(() => {
+                    const completos = pedidosAtendidos.filter(p => p.estadoFinal === 'Entregado');
+                    if (completos.length === 0) return null;
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">
+                          <span>🟢 Pedidos completos {completos.length}</span>
+                        </div>
+                        <div className="space-y-1 pl-1">
+                          {completos.map(p => (
+                            <div key={p.id} className="text-xs flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
+                              <span className="font-semibold text-slate-800">
+                                {p.id} — {p.cliente}
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                {p.cajasEntregadas} cj • {formatCLP(p.total)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Pedidos parciales */}
+                  {(() => {
+                    const parciales = pedidosAtendidos.filter(p => p.estadoFinal === 'Parcial');
+                    if (parciales.length === 0) return null;
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-xs font-bold text-amber-900 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
+                          <span>🟡 Pedidos parciales {parciales.length}</span>
+                        </div>
+                        <div className="space-y-1 pl-1">
+                          {parciales.map(p => (
+                            <div key={p.id} className="text-xs flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
+                              <div>
+                                <span className="font-semibold text-slate-800 block">
+                                  {p.id} — {p.cliente}
+                                </span>
+                                <span className="text-[10px] text-amber-700 block">
+                                  Entregadas: {p.cajasEntregadas} de {p.cajasPedidas} ({p.cajasLiberadasPD} a PD)
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-700 font-bold">
+                                {formatCLP(p.total)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Pedidos cancelados */}
+                  {(() => {
+                    const cancelados = pedidosAtendidos.filter(p => p.estadoFinal === 'Cancelado');
+                    if (cancelados.length === 0) return null;
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-xs font-bold text-rose-900 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                          <span>🔴 Pedidos cancelados {cancelados.length}</span>
+                        </div>
+                        <div className="space-y-1 pl-1">
+                          {cancelados.map(p => (
+                            <div key={p.id} className="text-xs flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
+                              <div>
+                                <span className="font-semibold text-slate-800 block">
+                                  {p.id} — {p.cliente}
+                                </span>
+                                <span className="text-[10px] text-rose-700 block">
+                                  {p.cajasLiberadasPD} caja(s) liberadas completas a PD
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-bold">
+                                Cancelado ($0)
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             {/* 2. VENTAS Y RECAUDACIÓN */}
@@ -2217,17 +2747,32 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
               </h3>
 
               <div className="divide-y divide-slate-100 text-xs">
-                <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">📋 Pedidos entregados</span>
+                <div className="py-1.5 flex justify-between items-center">
+                  <div>
+                    <span className="text-slate-700 font-bold block">📋 Pedidos entregados</span>
+                    <span className="text-[10px] text-slate-500">
+                      {ventasRealizadas.filter(v => Boolean(v.pedidoId)).length} pedido(s) PP entregados ({cajasVendidasPP} cajas)
+                    </span>
+                  </div>
                   <strong className="text-slate-900">{formatCLP(totalPedidosPesos)}</strong>
                 </div>
-                <div className="py-1.5 flex justify-between">
-                  <span className="text-slate-600">🛒 Venta directa</span>
+                <div className="py-1.5 flex justify-between items-center">
+                  <div>
+                    <span className="text-slate-700 font-bold block">🛒 Venta directa</span>
+                    <span className="text-[10px] text-slate-500">
+                      {ventasRealizadas.filter(v => !v.pedidoId).length} venta(s) PD realizadas ({cajasVendidasPD} cajas)
+                    </span>
+                  </div>
                   <strong className="text-slate-900">{formatCLP(totalVentaDirectaPesos)}</strong>
                 </div>
-                <div className="py-2 flex justify-between font-black text-sm bg-slate-50 px-2 rounded">
-                  <span className="text-slate-800">💰 TOTAL VENDIDO</span>
-                  <strong className="text-emerald-700">{formatCLP(totalVendidoGeneral)}</strong>
+                <div className="py-2 flex justify-between items-center font-black text-sm bg-slate-50 px-2 rounded">
+                  <div>
+                    <span className="text-slate-800 block">💰 TOTAL VENDIDO</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block">
+                      {ventasRealizadas.length} ventas registradas ({ventasRealizadas.filter(v => Boolean(v.pedidoId)).length} PP + {ventasRealizadas.filter(v => !v.pedidoId).length} PD) • {validacionCierre.cajasVendidas} cajas vendidas
+                    </span>
+                  </div>
+                  <strong className="text-emerald-700 text-base">{formatCLP(totalVendidoGeneral)}</strong>
                 </div>
               </div>
 
@@ -2279,6 +2824,90 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                   </div>
                 )}
               </div>
+
+              {/* SECCIÓN FACTURAS SOLICITADAS / PENDIENTES */}
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex justify-between items-center text-xs font-black bg-sky-50 p-2 rounded-lg border border-sky-200">
+                  <span className="text-sky-950 flex items-center gap-1.5">
+                    <span>🧾</span> FACTURAS DEL DÍA
+                  </span>
+                  <div className="flex items-center gap-2 text-[11px] font-bold">
+                    <span className="text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
+                      Entregadas: {facturasResumen.entregadas.length}
+                    </span>
+                    <span className="text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded">
+                      Pendientes: {facturasResumen.pendientes.length}
+                    </span>
+                  </div>
+                </div>
+
+                {facturasResumen.pendientes.length > 0 && (() => {
+                  const pendientesPD = facturasResumen.pendientes.filter(f => f.origen === 'Venta Directa');
+                  const pendientesPP = facturasResumen.pendientes.filter(f => f.origen.includes('Pedido PP'));
+
+                  return (
+                    <div className="mt-2.5 space-y-3">
+                      {/* Facturas pendientes PD */}
+                      {pendientesPD.length > 0 && (
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
+                            <span>🧾</span> Facturas pendientes PD
+                          </span>
+                          <div className="space-y-1.5">
+                            {pendientesPD.map((f, i) => (
+                              <div key={i} className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-0.5">
+                                <div className="flex items-center gap-1 text-slate-900 font-bold">
+                                  <span>👤</span> <span>{f.cliente}</span>
+                                </div>
+                                {f.rut && (
+                                  <div className="flex items-center gap-1 text-slate-600 font-medium text-[11px]">
+                                    <span>🧾</span> <span>RUT: {f.rut}</span>
+                                  </div>
+                                )}
+                                {f.celular && (
+                                  <div className="flex items-center gap-1 text-sky-800 font-medium text-[11px]">
+                                    <span>📱</span> <span>WhatsApp: {f.celular}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 text-emerald-800 font-black pt-0.5">
+                                  <span>💰</span> <span>Total {formatCLP(f.monto)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Facturas pendientes PP */}
+                      {pendientesPP.length > 0 && (
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
+                            <span>🧾</span> Facturas pendientes PP
+                          </span>
+                          <div className="space-y-1.5">
+                            {pendientesPP.map((f, i) => (
+                              <div key={i} className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-0.5">
+                                <div className="flex items-center gap-1 text-slate-900 font-bold">
+                                  <span>👤</span> <span>{f.cliente}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-emerald-800 font-black pt-0.5">
+                                  <span>💰</span> <span>Total {formatCLP(f.monto)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {facturasResumen.pendientes.length === 0 && facturasResumen.entregadas.length > 0 && (
+                  <div className="mt-1.5 text-[11px] text-emerald-700 font-semibold px-1">
+                    ✓ Todas las facturas solicitadas fueron entregadas conforme en ruta.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 3. OBSERVACIONES Y BOTÓN DE CIERRE */}
@@ -2295,21 +2924,51 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
               />
 
               {/* Banner de estado de validación */}
-              <div className={`p-3 rounded-xl text-xs font-bold ${
+              <div className={`p-3.5 rounded-xl text-xs font-bold space-y-2.5 ${
                 validacionCierre.puedeCerrar
                   ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
                   : 'bg-amber-50 border border-amber-300 text-amber-950'
               }`}>
                 {validacionCierre.puedeCerrar ? (
-                  <span>🟢 La ruta está lista para cerrar. Todas las cajas y ventas están auditadas.</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🟢</span>
+                    <span>La ruta está lista para cerrar. Todas las {cajasInicialesRuta} cajas y ventas están 100% auditadas.</span>
+                  </div>
                 ) : (
-                  <div className="space-y-1">
-                    <span>⚠️ La ruta aún no está lista para cerrar:</span>
-                    <ul className="list-disc pl-4 font-normal text-[11px] space-y-0.5">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">⚠️</span>
+                      <span>La ruta aún no está lista para cerrar:</span>
+                    </div>
+                    <ul className="list-disc pl-5 font-normal text-[11px] space-y-1">
                       {validacionCierre.errores.map((err, i) => (
                         <li key={i}>{err}</li>
                       ))}
                     </ul>
+
+                    {/* Botones de acción rápida para resolver sin rodeos */}
+                    <div className="pt-2 border-t border-amber-200/80 flex flex-col gap-2">
+                      {cajasEnBorradorVenta > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleDeshacerVenta}
+                          className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer text-center"
+                        >
+                          ↩️ Cancelar borrador de venta y devolver {cajasEnBorradorVenta} caja(s) a Disponibles
+                        </button>
+                      )}
+
+                      {validacionCierre.cajasSinResolver > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleAutoResolverSobranteBodega}
+                          className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-lg transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                        >
+                          <span>📦</span>
+                          <span>Asignar {validacionCierre.cajasSinResolver} caja(s) restante(s) como Sobrante a Bodega (Cuadrar al 100%)</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2323,15 +2982,91 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                 <span>📤</span>
                 <span>{rutaCerrada ? '✅ RUTA CERRADA Y ENVIADA' : 'CERRAR RUTA Y ENVIAR A ADMINISTRACIÓN'}</span>
               </button>
+
+              {/* Botón destacado para nuevo ensayo cuando la ruta ya está cerrada */}
+              {rutaCerrada && (
+                <div className="pt-3 border-t border-slate-200 space-y-2">
+                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-950 text-center font-bold">
+                    ✅ La ruta está sellada y archivada. ¿Deseas hacer otro ensayo o una nueva ruta?
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      ejecutarReinicioRuta();
+                      mostrarToast(`🔄 Ruta de ${vendedorActivo === 'vendedor-1' ? 'Vendedor 1' : 'Vendedor 2'} reiniciada. ¡Listo para un nuevo ensayo!`);
+                    }}
+                    className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    <span>🔄</span>
+                    <span>REINICIAR RUTA Y COMENZAR NUEVO ENSAYO</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Acciones auxiliares de cierre */}
+              <div className="pt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalReiniciar(true)}
+                  className="py-2.5 px-2 bg-slate-100 hover:bg-rose-50 text-rose-700 hover:text-rose-900 border border-slate-200 hover:border-rose-200 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                >
+                  <span>🔄</span>
+                  <span>Reiniciar ruta</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSeccion('portada')}
+                  className="py-2.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                >
+                  <span>←</span>
+                  <span>Volver al panel</span>
+                </button>
+              </div>
             </div>
 
             {/* DATOS DE PRUEBA / JSON INSPECTOR (Tu bloque exacto para probar) */}
             <div className="bg-slate-900 text-slate-300 rounded-2xl p-4 font-mono text-[11px] space-y-2">
               <span className="text-emerald-400 font-bold block">🧪 Inspector de Trazabilidad en Vivo:</span>
               <details className="cursor-pointer">
-                <summary className="text-slate-400 hover:text-white">Ventas realizadas ({ventasRealizadas.length})</summary>
+                <summary className="text-slate-400 hover:text-white">
+                  📋 Pedidos PP atendidos ({pedidosAtendidos.length})
+                </summary>
+                <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
+                  {JSON.stringify(pedidosAtendidos, null, 2)}
+                </pre>
+              </details>
+              <details className="cursor-pointer">
+                <summary className="text-slate-400 hover:text-white">
+                  🛒 Ventas directas (PD) realizadas ({ventasRealizadas.filter(v => !v.pedidoId).length})
+                </summary>
+                <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
+                  {JSON.stringify(ventasRealizadas.filter(v => !v.pedidoId), null, 2)}
+                </pre>
+              </details>
+              <details className="cursor-pointer">
+                <summary className="text-slate-400 hover:text-white">
+                  💰 Todas las ventas registradas ({ventasRealizadas.length} = {ventasRealizadas.filter(v => Boolean(v.pedidoId)).length} PP + {ventasRealizadas.filter(v => !v.pedidoId).length} PD) • {validacionCierre.cajasVendidas} cajas
+                </summary>
                 <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
                   {JSON.stringify(ventasRealizadas, null, 2)}
+                </pre>
+              </details>
+              <details className="cursor-pointer">
+                <summary className="text-slate-400 hover:text-white">Facturas del día ({facturasResumen.listado.length})</summary>
+                <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
+                  {JSON.stringify(facturasResumen, null, 2)}
+                </pre>
+              </details>
+              <details className="cursor-pointer">
+                <summary className="text-slate-400 hover:text-white">Productos disponibles en furgón ({totalCajasDisponibles} cajas)</summary>
+                <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
+                  {JSON.stringify(productosDisponibles, null, 2)}
+                </pre>
+              </details>
+              <details className="cursor-pointer">
+                <summary className="text-slate-400 hover:text-white">Cajón de venta en borrador ({cajasEnBorradorVenta} cajas)</summary>
+                <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
+                  {JSON.stringify({ productosSeleccionadosPD, cantidadesPD, enModoVenta }, null, 2)}
                 </pre>
               </details>
               <details className="cursor-pointer">
@@ -2346,18 +3081,85 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                   {JSON.stringify(movimientosDestino, null, 2)}
                 </pre>
               </details>
+              <details className="cursor-pointer">
+                <summary className="text-slate-400 hover:text-white">Destinos en proceso ({Object.keys(destinosEnProceso).length})</summary>
+                <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
+                  {JSON.stringify(destinosEnProceso, null, 2)}
+                </pre>
+              </details>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setSeccion('portada')}
-              className="w-full py-3 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors cursor-pointer"
-            >
-              ← Volver al panel
-            </button>
+            {/* Navegación al final de la pantalla de cierre */}
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSeccion('portada')}
+                className="py-3 bg-white hover:bg-slate-100 text-slate-800 font-black text-xs rounded-xl border border-slate-300 shadow-2xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+              >
+                <span>←</span>
+                <span>Volver al panel</span>
+              </button>
+              <button
+                type="button"
+                onClick={onBackToStore}
+                className="py-3 bg-slate-950 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-2xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+              >
+                <span>🏪</span>
+                <span>Ir a la Tienda</span>
+              </button>
+            </div>
           </div>
         )}
       </main>
+
+      {/* Barra de acceso rápido fija inferior para celulares (100% visible con el pulgar) */}
+      <nav aria-label="Navegación rápida de vendedor" className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 shadow-2xl sm:hidden">
+        <div className="grid grid-cols-4 gap-1.5 text-center">
+          <button
+            type="button"
+            onClick={onBackToStore}
+            className="py-2 px-1 rounded-xl bg-slate-950 active:bg-slate-800 text-white font-black text-[11px] flex flex-col items-center justify-center gap-0.5 cursor-pointer shadow-xs"
+          >
+            <span className="text-base leading-none">🏪</span>
+            <span>Tienda</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setVendedorActivo('vendedor-1')}
+            className={`py-2 px-1 rounded-xl font-black text-[11px] flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all ${
+              vendedorActivo === 'vendedor-1'
+                ? 'bg-sky-600 text-white shadow-xs ring-2 ring-sky-300'
+                : 'bg-slate-100 text-slate-700 border border-slate-200'
+            }`}
+          >
+            <span className="text-base leading-none">👤</span>
+            <span>Vend. 1</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setVendedorActivo('vendedor-2')}
+            className={`py-2 px-1 rounded-xl font-black text-[11px] flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all ${
+              vendedorActivo === 'vendedor-2'
+                ? 'bg-sky-600 text-white shadow-xs ring-2 ring-sky-300'
+                : 'bg-slate-100 text-slate-700 border border-slate-200'
+            }`}
+          >
+            <span className="text-base leading-none">👤</span>
+            <span>Vend. 2</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMostrarModalReiniciar(true)}
+            className="py-2 px-1 rounded-xl bg-rose-50 active:bg-rose-100 text-rose-700 font-black text-[11px] flex flex-col items-center justify-center gap-0.5 border border-rose-200 cursor-pointer shadow-2xs"
+          >
+            <span className="text-base leading-none">🔄</span>
+            <span>Reiniciar</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 };
