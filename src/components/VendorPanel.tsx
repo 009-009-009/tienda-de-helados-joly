@@ -715,9 +715,9 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
   const handleCambiarCantidadVentaSelector = (prodId: string, delta: number, disponible: number) => {
     setCantidadesVentaSelector(prev => {
-      const actual = prev[prodId] || 1;
+      const actual = prev[prodId] || 0;
       let nuevo = actual + delta;
-      if (nuevo < 1) nuevo = 1;
+      if (nuevo < 0) nuevo = 0;
       if (nuevo > disponible) nuevo = disponible;
       return { ...prev, [prodId]: nuevo };
     });
@@ -857,11 +857,16 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
   const handleVenderProductoDirecto = (prodId: string) => {
     const stockActual = productosDisponibles[prodId] || 0;
     if (stockActual <= 0) {
-      alert('No quedan cajas disponibles de este producto.');
+      mostrarToast('⚠️ No quedan cajas disponibles de este producto.');
       return;
     }
 
-    const cantidadDeseada = cantidadesVentaSelector[prodId] || 1;
+    const cantidadDeseada = cantidadesVentaSelector[prodId] || 0;
+    if (cantidadDeseada <= 0) {
+      mostrarToast('⚠️ Presiona "+" para indicar cuántas cajas vas a vender.');
+      return;
+    }
+
     const aDescontar = Math.min(cantidadDeseada, stockActual);
 
     // 1. Descontar inmediatamente de productos disponibles (como en destino)
@@ -881,8 +886,8 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       [prodId]: (prev[prodId] || 0) + aDescontar
     }));
 
-    // 3. Reset selector en la tarjeta
-    setCantidadesVentaSelector(prev => ({ ...prev, [prodId]: 1 }));
+    // 3. Reset selector en la tarjeta a 0 (igual que destino)
+    setCantidadesVentaSelector(prev => ({ ...prev, [prodId]: 0 }));
 
     // 4. Abrir y mantener visible el cajón de venta directa
     setEnModoVenta(true);
@@ -1161,8 +1166,8 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
   const facturasResumen = useMemo(() => {
     const listado: { cliente: string; origen: string; rut?: string; celular?: string; estado: 'Entregada' | 'Pendiente'; monto: number }[] = [];
 
-    // Facturas de ventas directas
-    ventasRealizadas.forEach(v => {
+    // Facturas de ventas directas (exclusivamente ventas directas, sin pedidoId de PP)
+    ventasRealizadas.filter(v => !v.pedidoId).forEach(v => {
       const nombreCli = typeof v.cliente === 'string'
         ? v.cliente
         : `${v.cliente.nombre} ${v.cliente.apellido}`.trim() || v.cliente.negocio || 'Cliente Venta Directa';
@@ -2004,7 +2009,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                     const prod = getProductInfo(prodId);
 
                     const estaSeleccionadoVenta = productosSeleccionadosPD.includes(prodId);
-                    const cantVenta = cantidadesVentaSelector[prodId] || 1;
+                    const cantVenta = cantidadesVentaSelector[prodId] || 0;
                     const cantDest = cantidadesDestino[prodId] || 0;
                     const esPrecioVisible = Boolean(preciosVisibles[`disp_${prodId}`]);
 
@@ -3161,10 +3166,31 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                 </pre>
               </details>
               <details className="cursor-pointer">
-                <summary className="text-slate-400 hover:text-white">Facturas del día ({facturasResumen.listado.length})</summary>
-                <pre className="mt-1 p-2 bg-slate-950 rounded overflow-x-auto text-[10px]">
-                  {JSON.stringify(facturasResumen, null, 2)}
-                </pre>
+                <summary className="text-slate-400 hover:text-white">
+                  🧾 Facturas del día ({facturasResumen.listado.length}: {facturasResumen.entregadas.length} entregadas, {facturasResumen.pendientes.length} pendientes)
+                </summary>
+                <div className="mt-1 p-2 bg-slate-950 rounded text-[10px] space-y-2">
+                  <div>
+                    <span className="text-emerald-400 font-bold block">✓ Entregadas ({facturasResumen.entregadas.length}):</span>
+                    {facturasResumen.entregadas.length === 0 ? (
+                      <span className="text-slate-500">Ninguna</span>
+                    ) : (
+                      <pre className="text-slate-300 overflow-x-auto">
+                        {JSON.stringify(facturasResumen.entregadas, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-slate-800">
+                    <span className="text-amber-400 font-bold block">⚠️ Pendientes ({facturasResumen.pendientes.length}):</span>
+                    {facturasResumen.pendientes.length === 0 ? (
+                      <span className="text-slate-500">Ninguna</span>
+                    ) : (
+                      <pre className="text-slate-300 overflow-x-auto">
+                        {JSON.stringify(facturasResumen.pendientes, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                </div>
               </details>
               <details className="cursor-pointer">
                 <summary className="text-slate-400 hover:text-white">Productos disponibles en furgón ({totalCajasDisponibles} cajas)</summary>
