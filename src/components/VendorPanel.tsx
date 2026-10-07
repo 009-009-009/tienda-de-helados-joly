@@ -2101,20 +2101,19 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                         </div>
 
                         {/* Desglose nítido de origen de las cajas (Opción B: comparten fila con ancho completo) */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
                           {cantPP > 0 && (
                             <span
-                              className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md shadow-2xs"
-                              title="Cajas liberadas de pedidos PP que deben resolverse en ruta"
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md shadow-2xs shrink-0"
+                              title="Cajas liberadas de pedidos PP (resolver en ruta)"
                             >
                               <span>🔄</span>
-                              <span>{cantPP} {cantPP === 1 ? 'cj' : 'cjs'} Preventa PP</span>
-                              <span className="text-amber-700 font-semibold">(🔒 en ruta)</span>
+                              <span>{cantPP} {cantPP === 1 ? 'cj' : 'cjs'} PP</span>
                             </span>
                           )}
                           {cantExtra > 0 && (
                             <span
-                              className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-900 bg-sky-100/90 border border-sky-300 px-2 py-0.5 rounded-md shadow-2xs"
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-900 bg-sky-100/90 border border-sky-300 px-2 py-0.5 rounded-md shadow-2xs shrink-0"
                               title="Cajas cargadas como carga extra del furgón"
                             >
                               <span>📦</span>
@@ -2131,21 +2130,21 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                         {/* Fila inferior: Controles operativos ordenados en 2 filas limpias */}
                         <div className="pt-2 border-t border-slate-200 text-xs space-y-1.5">
                           {/* Fila 1: Control de Venta Directa */}
-                          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-300 px-3 py-1.5 rounded-xl shadow-2xs w-full">
+                          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-300 px-2.5 py-1.5 rounded-xl shadow-2xs w-full">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-black text-emerald-950">🛒 Venta:</span>
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadVentaSelector(prodId, -1, cant)}
-                                className="w-6 h-6 text-xs bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                                className="w-6 h-6 text-sm bg-white hover:bg-emerald-100 border border-emerald-300 text-black font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none"
                               >
                                 −
                               </button>
-                              <span className="text-xs font-black text-emerald-950 w-5 text-center">{cantVenta}</span>
+                              <span className="text-xs font-black text-black w-5 text-center">{cantVenta}</span>
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadVentaSelector(prodId, 1, cant)}
-                                className="w-6 h-6 text-xs bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                                className="w-6 h-6 text-sm bg-white hover:bg-emerald-100 border border-emerald-300 text-black font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none"
                               >
                                 +
                               </button>
@@ -2153,7 +2152,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                             <button
                               type="button"
                               onClick={() => handleVenderProductoDirecto(prodId)}
-                              className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
                               title="Sumar este producto a la venta directa"
                             >
                               <span>Vender</span>
@@ -2162,41 +2161,41 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                           </div>
 
                           {/* Fila 2: Control Destino a la izquierda + Quitar extra / Resolver en ruta a la derecha */}
-                          <div className="flex items-center justify-between gap-2 w-full">
+                          <div className="flex items-center justify-between gap-1 w-full">
                             {/* Control Destino (Merma / Sobrante / Compensación) */}
-                            <div className="flex items-center gap-1 bg-amber-50/80 border border-amber-300 px-2.5 py-1 rounded-xl shadow-2xs">
+                            <div className="flex items-center gap-1 bg-amber-50/80 border border-amber-300 px-2 py-1 rounded-xl shadow-2xs shrink-0">
                               <span className="text-[11px] font-bold text-amber-950">Destino:</span>
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadDestino(prodId, -1, cant)}
-                                className="w-5 h-5 text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                                className="w-5 h-5 text-sm bg-white hover:bg-amber-100 border border-amber-300 text-black font-black rounded cursor-pointer flex items-center justify-center active:scale-95 leading-none"
                               >
                                 −
                               </button>
-                              <span className="text-xs font-black text-amber-950 w-4 text-center">{cantDest}</span>
+                              <span className="text-xs font-black text-black w-4 text-center">{cantDest}</span>
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadDestino(prodId, 1, cant)}
-                                className="w-5 h-5 text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                                className="w-5 h-5 text-sm bg-white hover:bg-amber-100 border border-amber-300 text-black font-black rounded cursor-pointer flex items-center justify-center active:scale-95 leading-none"
                               >
                                 +
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleEnviarADestino(prodId)}
-                                className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-xs cursor-pointer ml-1 shadow-2xs"
+                                className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-xs cursor-pointer ml-0.5 shadow-2xs"
                                 title="Enviar a destino (merma, compensación o sobrante)"
                               >
                                 →
                               </button>
                             </div>
 
-                            {/* Quitar Carga Extra O Resolver en ruta compartiendo la misma fila */}
+                            {/* Quitar Carga Extra O Resolver en ruta compartiendo la misma fila sin desbordar */}
                             {cantExtra > 0 ? (
                               <button
                                 type="button"
                                 onClick={() => handleQuitarCargaExtra(prodId)}
-                                className="px-2.5 py-1 flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl cursor-pointer transition-colors shadow-2xs active:scale-95 shrink-0"
+                                className="px-2 py-1 flex items-center gap-1 text-[10.5px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg cursor-pointer transition-colors shadow-2xs active:scale-95 shrink-0"
                                 title={`Devolver ${cantExtra} caja(s) de carga extra al catálogo`}
                               >
                                 <span>✕</span>
@@ -2204,7 +2203,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                               </button>
                             ) : cantPP > 0 ? (
                               <span
-                                className="text-[10px] font-bold text-amber-800 bg-amber-100/90 border border-amber-300 px-2 py-1 rounded-xl shrink-0 select-none shadow-2xs"
+                                className="text-[10px] font-bold text-amber-800 bg-amber-100/90 border border-amber-300 px-2 py-1 rounded-lg shrink-0 select-none shadow-2xs"
                                 title="Proviene de pedido PP: debe resolverse en ruta"
                               >
                                 🔒 Resolver en ruta
