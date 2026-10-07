@@ -108,13 +108,13 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Acciones: Compartir Tienda + Guía Fotos + Carrito */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        {/* Acciones: Compartir Tienda + Guía Fotos + Carrito (Botón Vendedor se mantiene exclusivo arriba) */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Botón para copiar y compartir enlace de la tienda */}
           <button
             type="button"
             onClick={handleCopyLink}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+            className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
               copiedLink
                 ? 'bg-emerald-600 text-white scale-105'
                 : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200'
@@ -123,14 +123,14 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {copiedLink ? (
               <>
-                <Check className="w-4 h-4 text-[#EEFF00]" />
-                <span>¡Link copiado!</span>
+                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#EEFF00]" />
+                <span className="text-[11px] sm:text-xs">¡Copiado!</span>
               </>
             ) : (
               <>
-                <Share2 className="w-4 h-4 text-sky-600" />
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-600" />
                 <span className="hidden sm:inline">Compartir Tienda</span>
-                <span className="sm:hidden">Link</span>
+                <span className="sm:hidden text-[11px]">Link</span>
               </>
             )}
           </button>
@@ -138,36 +138,26 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenGuide}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
             title="Ver guía para fotos oficiales"
           >
             <FolderCheck className="w-4 h-4 text-[#0284c7]" />
             <span className="hidden md:inline">Fotos Oficiales</span>
           </button>
 
-          {onOpenVendorPanel && (
-            <button
-              type="button"
-              onClick={onOpenVendorPanel}
-              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition-all shadow-xs cursor-pointer border border-amber-400/40"
-              title="Abrir Panel del Vendedor (Pedidos, Carga Extra y Cierre de Ruta)"
-            >
-              <Truck className="w-4 h-4 text-[#EEFF00] shrink-0" />
-              <span className="text-[11px] sm:text-xs">Vendedor</span>
-            </button>
-          )}
-
+          {/* Botón de Cajas Pedidas / Carrito - Responsive y nunca se corta en celular */}
           <button
             type="button"
             onClick={onOpenCart}
-            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all active:scale-[0.98] cursor-pointer shrink-0"
+            title="Ver canasta de pedidos"
           >
-            <ShoppingBag className="w-5 h-5 text-[#EEFF00]" />
+            <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-[#EEFF00] shrink-0" />
             <div className="text-left leading-tight">
-              <span className="block text-xs font-black text-[#EEFF00]">
+              <span className="block text-[11px] sm:text-xs font-black text-[#EEFF00] whitespace-nowrap">
                 {totalBoxes} {totalBoxes === 1 ? 'Caja' : 'Cajas'}
               </span>
-              <span className="block text-[11px] text-emerald-100 font-bold">
+              <span className="block text-[10px] sm:text-[11px] text-emerald-100 font-bold whitespace-nowrap">
                 {formatCLP(totalAmount)}
               </span>
             </div>

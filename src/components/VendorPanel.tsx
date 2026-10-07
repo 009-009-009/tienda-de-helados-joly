@@ -50,6 +50,8 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
   const [pedidosAtendidos, setPedidosAtendidos] = useState<{
     id: string;
     cliente: string;
+    telefono?: string;
+    rut?: string;
     cajasPedidas: number;
     cajasEntregadas: number;
     cajasLiberadasPD: number;
@@ -564,12 +566,21 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
       const nuevaVenta: VentaRealizada = {
         pedidoId: pedido.id,
-        cliente: pedido.cliente,
+        cliente: {
+          nombre: pedido.cliente,
+          apellido: '',
+          negocio: pedido.negocio || '',
+          sector: pedido.sector || '',
+          direccion: pedido.direccion || '',
+          celular: pedido.telefono || ''
+        },
         total: totalPesos,
         pago: pagoFinal,
         montoEfectivo: efectivoNum,
         montoTransferencia: transferenciaNum,
         factura: estadoForm.factura,
+        rut: pedido.rut,
+        estadoFactura: estadoForm.factura,
         productos: productosEntregados,
         fechaHora: new Date().toLocaleTimeString('es-CL')
       };
@@ -591,6 +602,8 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       {
         id: pedido.id,
         cliente: pedido.cliente,
+        telefono: pedido.telefono,
+        rut: pedido.rut,
         cajasPedidas,
         cajasEntregadas,
         cajasLiberadasPD: Math.max(0, cajasPedidas - cajasEntregadas),
@@ -1182,6 +1195,8 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
         listado.push({
           cliente: p.cliente,
           origen: `Pedido PP (${p.id})`,
+          rut: p.rut,
+          celular: p.telefono,
           estado: p.factura === 'Pendiente' ? 'Pendiente' : 'Entregada',
           monto: p.total
         });
@@ -2008,9 +2023,11 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                         {/* Fila superior: Cantidad de cajas, Nombre completo del producto y Precio */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-2.5">
-                            <span className="w-7 h-7 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                              {cant}
-                            </span>
+                            <div className="px-2 py-1 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-300 text-amber-950 font-black text-xs flex items-center gap-1 shrink-0 shadow-2xs mt-0.5" title="Cantidad de cajas disponibles en el camión">
+                              <span className="text-sm leading-none">📦</span>
+                              <span className="text-sm font-extrabold">{cant}</span>
+                              <span className="text-[10px] text-amber-800 font-semibold">{cant === 1 ? 'cj' : 'cjs'}</span>
+                            </div>
                             <div>
                               <strong className="block text-slate-900 font-extrabold text-sm leading-snug">
                                 {prod.name}
@@ -2646,11 +2663,21 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center">
+              {/* Cuadros de trazabilidad: PP Atendidos, Cancelados, PD Realizadas y Total Ventas */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                 <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200">
                   <span className="text-[10px] font-extrabold text-sky-800 uppercase block">PP atendidos</span>
                   <strong className="text-base font-black text-sky-950 block">{pedidosAtendidos.length}</strong>
                   <span className="text-[10px] text-sky-700 font-bold block">{cajasVendidasPP} cajas</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200">
+                  <span className="text-[10px] font-extrabold text-rose-800 uppercase block">Cancelados</span>
+                  <strong className="text-base font-black text-rose-950 block">
+                    {pedidosAtendidos.filter(p => p.estadoFinal === 'Cancelado').length}
+                  </strong>
+                  <span className="text-[10px] text-rose-700 font-bold block">
+                    {pedidosAtendidos.filter(p => p.estadoFinal === 'Cancelado').reduce((s, p) => s + p.cajasLiberadasPD, 0)} cj a PD
+                  </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
                   <span className="text-[10px] font-extrabold text-emerald-800 uppercase block">PD realizadas</span>
@@ -2665,7 +2692,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
               </div>
 
               <div className="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 leading-relaxed font-medium">
-                ✨ <strong>Trazabilidad limpia:</strong> Se visitaron <strong>{pedidosAtendidos.length} pedidos PP</strong> ({cajasVendidasPP} cajas entregadas) y se efectuaron <strong>{ventasRealizadas.filter(v => !v.pedidoId).length} ventas directas PD</strong> ({cajasVendidasPD} cajas vendidas), totalizando exactamente <strong>{ventasRealizadas.length} ventas registradas</strong> con <strong>{validacionCierre.cajasVendidas} cajas vendidas</strong>.
+                ✨ <strong>Trazabilidad limpia:</strong> Se visitaron <strong>{pedidosAtendidos.length} clientes PP</strong> ({cajasVendidasPP} cajas entregadas{pedidosAtendidos.filter(p => p.estadoFinal === 'Cancelado').length > 0 ? `, ${pedidosAtendidos.filter(p => p.estadoFinal === 'Cancelado').length} cancelado con cajas a PD` : ''}) y se efectuaron <strong>{ventasRealizadas.filter(v => !v.pedidoId).length} ventas directas PD</strong> ({cajasVendidasPD} cajas vendidas), totalizando exactamente <strong>{ventasRealizadas.length} ventas registradas</strong> con <strong>{validacionCierre.cajasVendidas} cajas vendidas</strong>.
               </div>
             </div>
 
@@ -2842,13 +2869,17 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                     {ventasRealizadas.filter(v => v.pago === 'Pendiente').map((v, i) => {
                       const nombre = typeof v.cliente === 'string'
                         ? v.cliente
-                        : `${v.cliente.nombre} ${v.cliente.apellido}`;
+                        : `${v.cliente.nombre} ${v.cliente.apellido}`.trim() || v.cliente.negocio || 'Cliente';
+                      const celular = typeof v.cliente === 'object' && v.cliente.celular
+                        ? v.cliente.celular
+                        : pedidosAtendidos.find(p => p.id === v.pedidoId || p.cliente === nombre)?.telefono;
+
                       return (
                         <div key={i} className="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-200">
                           <div>
                             <span className="font-bold text-slate-800">▶ {nombre}</span>
-                            {typeof v.cliente === 'object' && v.cliente.celular && (
-                              <span className="text-[11px] text-slate-500 block">📱 {v.cliente.celular}</span>
+                            {celular && (
+                              <span className="text-[11px] text-sky-800 font-medium block">📱 {celular}</span>
                             )}
                           </div>
                           <strong className="text-amber-700">{formatCLP(v.total)}</strong>
@@ -2924,6 +2955,16 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                                 <div className="flex items-center gap-1 text-slate-900 font-bold">
                                   <span>👤</span> <span>{f.cliente}</span>
                                 </div>
+                                {f.rut && (
+                                  <div className="flex items-center gap-1 text-slate-600 font-medium text-[11px]">
+                                    <span>🧾</span> <span>RUT: {f.rut}</span>
+                                  </div>
+                                )}
+                                {f.celular && (
+                                  <div className="flex items-center gap-1 text-sky-800 font-medium text-[11px]">
+                                    <span>📱</span> <span>WhatsApp: {f.celular}</span>
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-1 text-emerald-800 font-black pt-0.5">
                                   <span>💰</span> <span>Total {formatCLP(f.monto)}</span>
                                 </div>

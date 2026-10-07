@@ -23,6 +23,37 @@ export default function App() {
     return 'tienda';
   });
 
+  // Modal de clave de acceso para vendedores
+  const [mostrarModalClave, setMostrarModalClave] = useState<boolean>(false);
+  const [pinIngresado, setPinIngresado] = useState<string>('');
+  const [errorPin, setErrorPin] = useState<string>('');
+
+  const handleSolicitarAccesoVendedor = () => {
+    // Si ya está autenticado en la sesión, entra directo
+    if (typeof window !== 'undefined' && sessionStorage.getItem('joly_vendedor_autenticado') === 'true') {
+      handleCambiarVista('vendedor');
+      return;
+    }
+    setPinIngresado('');
+    setErrorPin('');
+    setMostrarModalClave(true);
+  };
+
+  const handleVerificarPin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const pinLimpio = pinIngresado.trim();
+    // Claves válidas operativas: 1234 (fácil para vendedores) o 2026
+    if (pinLimpio === '1234' || pinLimpio === '2026' || pinLimpio === '7788') {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('joly_vendedor_autenticado', 'true');
+      }
+      setMostrarModalClave(false);
+      handleCambiarVista('vendedor');
+    } else {
+      setErrorPin('PIN incorrecto. Ingresa el código asignado a tu furgón (Ej: 1234).');
+    }
+  };
+
   const handleCambiarVista = (nuevaVista: 'tienda' | 'vendedor') => {
     setVistaActiva(nuevaVista);
     if (typeof window !== 'undefined') {
@@ -106,7 +137,7 @@ export default function App() {
         totalAmount={totalAmount}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenGuide={() => handleOpenGuide()}
-        onOpenVendorPanel={() => handleCambiarVista('vendedor')}
+        onOpenVendorPanel={handleSolicitarAccesoVendedor}
       />
 
       {/* Franja superior blanca con el banner amigable original */}
@@ -407,6 +438,67 @@ export default function App() {
         onClose={() => setIsGuideOpen(false)}
         selectedProduct={guideSelectedProduct}
       />
+
+      {/* Modal de Clave / PIN de Seguridad para Vendedores */}
+      {mostrarModalClave && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border-2 border-slate-900 text-center space-y-4">
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-700 text-xl font-bold">
+              🔒
+            </div>
+
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">
+                Acceso Exclusivo a Vendedores
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Ingresa tu PIN de ruta para ingresar al Panel del Vendedor (Pedidos, Carga Extra y Cierre).
+              </p>
+            </div>
+
+            <form onSubmit={handleVerificarPin} className="space-y-3">
+              <div>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="PIN de acceso..."
+                  value={pinIngresado}
+                  onChange={(e) => {
+                    setPinIngresado(e.target.value);
+                    setErrorPin('');
+                  }}
+                  autoFocus
+                  className="w-full text-center text-xl tracking-widest font-black py-2.5 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none"
+                />
+                {errorPin && (
+                  <p className="text-[11px] text-rose-600 font-bold mt-1.5">{errorPin}</p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalClave(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl cursor-pointer shadow-md"
+                >
+                  Ingresar →
+                </button>
+              </div>
+
+              <p className="text-[10px] text-slate-400">
+                💡 Clave de prueba vendedor: <strong className="text-slate-600">1234</strong>
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

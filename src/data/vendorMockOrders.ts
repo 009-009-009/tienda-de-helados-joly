@@ -8,6 +8,7 @@ export const PEDIDOS_INICIALES_VENDEDOR_1: PedidoPP[] = [
     direccion: 'Los Tilos 430',
     sector: 'Hualqui',
     telefono: '+56 9 9123 4567',
+    rut: '12.345.678-9',
     total: '$29.072',
     totalNumero: 29072,
     productos: [
@@ -24,6 +25,7 @@ export const PEDIDOS_INICIALES_VENDEDOR_1: PedidoPP[] = [
     direccion: 'Los Aromos 125',
     sector: 'Hualqui',
     telefono: '+56 9 9234 5678',
+    rut: '14.567.890-K',
     total: '$37.144',
     totalNumero: 37144,
     productos: [
@@ -41,6 +43,7 @@ export const PEDIDOS_INICIALES_VENDEDOR_1: PedidoPP[] = [
     direccion: 'Los Canelos 215',
     sector: 'Chiguayante',
     telefono: '+56 9 9345 6789',
+    rut: '15.678.901-2',
     total: '$57.940',
     totalNumero: 57940,
     productos: [
@@ -59,6 +62,7 @@ export const PEDIDOS_INICIALES_VENDEDOR_1: PedidoPP[] = [
     direccion: 'Las Araucarias 80',
     sector: 'Chiguayante',
     telefono: '+56 9 9456 7890',
+    rut: '16.789.012-3',
     total: '$87.546',
     totalNumero: 87546,
     productos: [
@@ -80,6 +84,7 @@ export const PEDIDOS_INICIALES_VENDEDOR_2: PedidoPP[] = [
     direccion: 'Av. Michimalonco 840',
     sector: 'San Pedro de la Paz',
     telefono: '+56 9 9567 8901',
+    rut: '17.890.123-4',
     total: '$39.262',
     totalNumero: 39262,
     productos: [
@@ -97,6 +102,7 @@ export const PEDIDOS_INICIALES_VENDEDOR_2: PedidoPP[] = [
     direccion: 'Sotomayor 310',
     sector: 'Coronel',
     telefono: '+56 9 9678 9012',
+    rut: '18.901.234-5',
     total: '$52.920',
     totalNumero: 52920,
     productos: [

@@ -26,6 +26,7 @@ export interface PedidoPP {
   direccion: string;
   sector?: string;
   telefono?: string;
+  rut?: string;
   total: string;
   totalNumero: number;
   productos: PedidoProductoItem[];
