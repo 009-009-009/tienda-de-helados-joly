@@ -2077,44 +2077,15 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                       <div key={prodId} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2.5 shadow-2xs">
                         {/* Fila superior: Cantidad de cajas, Nombre completo del producto y Precio */}
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-2.5">
-                            <div className="px-2 py-1 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-300 text-amber-950 font-black text-xs flex items-center gap-1 shrink-0 shadow-2xs mt-0.5" title="Cantidad total de cajas disponibles en el camión">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="px-2 py-1 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-300 text-amber-950 font-black text-xs flex items-center gap-1 shrink-0 shadow-2xs" title="Cantidad total de cajas disponibles en el camión">
                               <span className="text-sm leading-none">📦</span>
                               <span className="text-sm font-extrabold">{cant}</span>
                               <span className="text-[10px] text-amber-800 font-semibold">{cant === 1 ? 'cj' : 'cjs'}</span>
                             </div>
-                            <div>
-                              <strong className="block text-slate-900 font-extrabold text-sm leading-snug">
-                                {prod.name}
-                              </strong>
-                              {/* Desglose nítido de origen de las cajas (Opción B) */}
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                {cantPP > 0 && (
-                                  <span
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md"
-                                    title="Cajas liberadas de pedidos PP que deben resolverse en ruta"
-                                  >
-                                    <span>🔄</span>
-                                    <span>{cantPP} {cantPP === 1 ? 'cj' : 'cjs'} Preventa PP</span>
-                                    <span className="text-amber-700 font-semibold">(🔒 en ruta)</span>
-                                  </span>
-                                )}
-                                {cantExtra > 0 && (
-                                  <span
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-900 bg-sky-100/90 border border-sky-300 px-2 py-0.5 rounded-md"
-                                    title="Cajas cargadas como carga extra del furgón"
-                                  >
-                                    <span>📦</span>
-                                    <span>{cantExtra} {cantExtra === 1 ? 'cj' : 'cjs'} Carga extra</span>
-                                  </span>
-                                )}
-                                {cantPP === 0 && cantExtra === 0 && (
-                                  <span className="text-[11px] text-slate-500 font-semibold">
-                                    📦 Stock disponible
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                            <strong className="text-slate-900 font-extrabold text-sm leading-snug truncate">
+                              {prod.name}
+                            </strong>
                           </div>
 
                           <div className="text-right shrink-0">
@@ -2129,30 +2100,60 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                           </div>
                         </div>
 
-                        {/* Fila inferior: Controles operativos (Venta Directa con botón directo VENDER, y Destino) */}
-                        <div className="flex items-center justify-between pt-2.5 border-t border-slate-200 text-xs gap-2 flex-wrap">
-                          {/* Control de Venta Directa con Botón Directo */}
-                          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 px-2.5 py-1.5 rounded-xl shadow-2xs">
-                            <span className="text-xs font-black text-emerald-950">🛒 Venta:</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCambiarCantidadVentaSelector(prodId, -1, cant)}
-                              className="w-5 h-5 text-xs bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-950 rounded font-bold cursor-pointer"
+                        {/* Desglose nítido de origen de las cajas (Opción B: comparten fila con ancho completo) */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {cantPP > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md shadow-2xs"
+                              title="Cajas liberadas de pedidos PP que deben resolverse en ruta"
                             >
-                              −
-                            </button>
-                            <span className="text-xs font-black text-emerald-950 w-4 text-center">{cantVenta}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCambiarCantidadVentaSelector(prodId, 1, cant)}
-                              className="w-5 h-5 text-xs bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-950 rounded font-bold cursor-pointer"
+                              <span>🔄</span>
+                              <span>{cantPP} {cantPP === 1 ? 'cj' : 'cjs'} Preventa PP</span>
+                              <span className="text-amber-700 font-semibold">(🔒 en ruta)</span>
+                            </span>
+                          )}
+                          {cantExtra > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-900 bg-sky-100/90 border border-sky-300 px-2 py-0.5 rounded-md shadow-2xs"
+                              title="Cajas cargadas como carga extra del furgón"
                             >
-                              +
-                            </button>
+                              <span>📦</span>
+                              <span>{cantExtra} {cantExtra === 1 ? 'cj' : 'cjs'} Carga extra</span>
+                            </span>
+                          )}
+                          {cantPP === 0 && cantExtra === 0 && (
+                            <span className="text-[11px] text-slate-500 font-semibold">
+                              📦 Stock disponible
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Fila inferior: Controles operativos ordenados en 2 filas limpias */}
+                        <div className="pt-2 border-t border-slate-200 text-xs space-y-1.5">
+                          {/* Fila 1: Control de Venta Directa */}
+                          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-300 px-3 py-1.5 rounded-xl shadow-2xs w-full">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-black text-emerald-950">🛒 Venta:</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCambiarCantidadVentaSelector(prodId, -1, cant)}
+                                className="w-6 h-6 text-xs bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                              >
+                                −
+                              </button>
+                              <span className="text-xs font-black text-emerald-950 w-5 text-center">{cantVenta}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCambiarCantidadVentaSelector(prodId, 1, cant)}
+                                className="w-6 h-6 text-xs bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                              >
+                                +
+                              </button>
+                            </div>
                             <button
                               type="button"
                               onClick={() => handleVenderProductoDirecto(prodId)}
-                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-xs cursor-pointer ml-1 flex items-center gap-1 active:scale-95 transition-all"
+                              className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
                               title="Sumar este producto a la venta directa"
                             >
                               <span>Vender</span>
@@ -2160,53 +2161,56 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                             </button>
                           </div>
 
-                          {/* Control Destino (Merma / Sobrante / Compensación) */}
-                          <div className="flex items-center gap-1 bg-amber-50/80 border border-amber-300 px-2 py-1.5 rounded-xl shadow-2xs">
-                            <span className="text-[11px] font-bold text-amber-950">Destino:</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCambiarCantidadDestino(prodId, -1, cant)}
-                              className="w-5 h-5 text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 rounded font-bold cursor-pointer"
-                            >
-                              −
-                            </button>
-                            <span className="text-xs font-black text-amber-950 w-4 text-center">{cantDest}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCambiarCantidadDestino(prodId, 1, cant)}
-                              className="w-5 h-5 text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 rounded font-bold cursor-pointer"
-                            >
-                              +
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEnviarADestino(prodId)}
-                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-xs cursor-pointer ml-1 shadow-2xs"
-                              title="Enviar a destino (merma, compensación o sobrante)"
-                            >
-                              →
-                            </button>
-                          </div>
+                          {/* Fila 2: Control Destino a la izquierda + Quitar extra / Resolver en ruta a la derecha */}
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            {/* Control Destino (Merma / Sobrante / Compensación) */}
+                            <div className="flex items-center gap-1 bg-amber-50/80 border border-amber-300 px-2.5 py-1 rounded-xl shadow-2xs">
+                              <span className="text-[11px] font-bold text-amber-950">Destino:</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCambiarCantidadDestino(prodId, -1, cant)}
+                                className="w-5 h-5 text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                              >
+                                −
+                              </button>
+                              <span className="text-xs font-black text-amber-950 w-4 text-center">{cantDest}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCambiarCantidadDestino(prodId, 1, cant)}
+                                className="w-5 h-5 text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 rounded font-bold cursor-pointer flex items-center justify-center active:scale-95"
+                              >
+                                +
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEnviarADestino(prodId)}
+                                className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-xs cursor-pointer ml-1 shadow-2xs"
+                                title="Enviar a destino (merma, compensación o sobrante)"
+                              >
+                                →
+                              </button>
+                            </div>
 
-                          {/* Quitar Carga Extra (Si tiene cajas de carga extra, permite devolverlas al catálogo sin tocar las de PP) */}
-                          {cantExtra > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleQuitarCargaExtra(prodId)}
-                              className="px-2 py-1 flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg cursor-pointer ml-auto transition-colors"
-                              title={`Devolver ${cantExtra} caja(s) de carga extra al catálogo`}
-                            >
-                              <span>✕</span>
-                              <span>Quitar extra ({cantExtra})</span>
-                            </button>
-                          ) : cantPP > 0 ? (
-                            <span
-                              className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-1 rounded-lg ml-auto shrink-0 select-none border border-amber-200"
-                              title="Proviene de pedido PP: debe resolverse en ruta"
-                            >
-                              🔒 Resolver en ruta
-                            </span>
-                          ) : null}
+                            {/* Quitar Carga Extra O Resolver en ruta compartiendo la misma fila */}
+                            {cantExtra > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => handleQuitarCargaExtra(prodId)}
+                                className="px-2.5 py-1 flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl cursor-pointer transition-colors shadow-2xs active:scale-95 shrink-0"
+                                title={`Devolver ${cantExtra} caja(s) de carga extra al catálogo`}
+                              >
+                                <span>✕</span>
+                                <span>Quitar extra ({cantExtra})</span>
+                              </button>
+                            ) : cantPP > 0 ? (
+                              <span
+                                className="text-[10px] font-bold text-amber-800 bg-amber-100/90 border border-amber-300 px-2 py-1 rounded-xl shrink-0 select-none shadow-2xs"
+                                title="Proviene de pedido PP: debe resolverse en ruta"
+                              >
+                                🔒 Resolver en ruta
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     );
