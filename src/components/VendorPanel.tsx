@@ -442,25 +442,35 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
         [pedidoId]: maxCantidades
       }));
 
-      setEstadosEntrega(prev => ({
-        ...prev,
-        [pedidoId]: {
-          ...(prev[pedidoId] || {}),
-          estado: 'Entregado',
-          pago: prev[pedidoId]?.pago === '—' ? '' : (prev[pedidoId]?.pago || ''),
-          factura: prev[pedidoId]?.factura === '—' ? (ped.factura === 'SÍ' ? 'Entregada' : '—') : (prev[pedidoId]?.factura || (ped.factura === 'SÍ' ? 'Entregada' : '—'))
-        }
-      }));
+      setEstadosEntrega(prev => {
+        const actual = prev[pedidoId] || {};
+        return {
+          ...prev,
+          [pedidoId]: {
+            ...actual,
+            estado: 'Entregado',
+            pago: actual.pago === '—' ? '' : (actual.pago || ''),
+            factura: actual.factura !== undefined && actual.factura !== '—'
+              ? actual.factura
+              : (ped.factura === 'SÍ' ? 'Pendiente' : '—')
+          }
+        };
+      });
     } else {
-      setEstadosEntrega(prev => ({
-        ...prev,
-        [pedidoId]: {
-          ...(prev[pedidoId] || {}),
-          estado: 'Parcial',
-          pago: prev[pedidoId]?.pago === '—' ? '' : (prev[pedidoId]?.pago || ''),
-          factura: prev[pedidoId]?.factura === '—' ? (ped.factura === 'SÍ' ? 'Entregada' : '—') : (prev[pedidoId]?.factura || (ped.factura === 'SÍ' ? 'Entregada' : '—'))
-        }
-      }));
+      setEstadosEntrega(prev => {
+        const actual = prev[pedidoId] || {};
+        return {
+          ...prev,
+          [pedidoId]: {
+            ...actual,
+            estado: 'Parcial',
+            pago: actual.pago === '—' ? '' : (actual.pago || ''),
+            factura: actual.factura !== undefined && actual.factura !== '—'
+              ? actual.factura
+              : (ped.factura === 'SÍ' ? 'Pendiente' : '—')
+          }
+        };
+      });
     }
   };
 
@@ -494,11 +504,16 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       estado: estadoCalculado,
       pago: '',
       montoEfectivo: '',
-      factura: pedido.factura === 'SÍ' ? 'Entregada' : '—'
+      factura: pedido.factura === 'SÍ' ? 'Pendiente' : '—'
     };
 
     const estadoFinal = estadoForm.estado || estadoCalculado;
     const pagoFinal = estadoFinal === 'Cancelado' ? '—' : estadoForm.pago;
+    const facturaFinal = estadoFinal === 'Cancelado'
+      ? '—'
+      : (estadoForm.factura && estadoForm.factura !== '—'
+          ? estadoForm.factura
+          : (pedido.factura === 'SÍ' ? 'Pendiente' : '—'));
 
     if (estadoFinal !== 'Cancelado' && (!pagoFinal || pagoFinal === '—')) {
       mostrarToast('⚠️ Selecciona una forma de pago antes de guardar.');
@@ -578,9 +593,9 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
         pago: pagoFinal,
         montoEfectivo: efectivoNum,
         montoTransferencia: transferenciaNum,
-        factura: estadoForm.factura,
+        factura: facturaFinal,
         rut: pedido.rut,
-        estadoFactura: estadoForm.factura,
+        estadoFactura: facturaFinal,
         productos: productosEntregados,
         fechaHora: new Date().toLocaleTimeString('es-CL')
       };
@@ -593,7 +608,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
       ...pedido,
       estadoPedido: estadoFinal,
       estadoPago: pagoFinal,
-      estadoFactura: estadoForm.factura
+      estadoFactura: facturaFinal
     };
 
     // Actualizamos el historial de pedidos completados para auditoría
@@ -609,7 +624,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
         cajasLiberadasPD: Math.max(0, cajasPedidas - cajasEntregadas),
         estadoFinal: estadoFinal,
         pago: pagoFinal,
-        factura: estadoForm.factura,
+        factura: facturaFinal,
         total: totalPesos
       }
     ]);
@@ -660,43 +675,61 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
   };
 
   const handleQuitarCargaExtra = (prodId: string) => {
-    const cant = productosDisponibles[prodId] || 0;
-    if (cant <= 0) return;
+    const cantDisponible = productosDisponibles[prodId] || 0;
+    if (cantDisponible <= 0) return;
 
-    // Verificar si contiene cajas liberadas de PP
+    // Verificar desglose de orígenes
     const origenes = origenProductosDisponibles[prodId] || [];
-    const cantPP = origenes
-      .filter(o => o.origen === 'pedido-parcial' || o.origen === 'pedido-cancelado')
+    const cantExtra = origenes
+      .filter(o => o.origen === 'carga-extra')
       .reduce((sum, o) => sum + o.cantidad, 0);
 
-    if (cantPP > 0) {
-      mostrarToast(`⚠️ Este producto incluye ${cantPP} caja(s) de Preventa (PP). Las cajas de pedidos deben resolverse en ruta (venta, destino o sobrante). No se pueden eliminar.`);
+    if (cantExtra <= 0) {
+      mostrarToast('⚠️ Este producto no tiene cajas de carga extra para quitar. Proviene de Preventa (PP) y debe resolverse en ruta.');
       return;
     }
 
-    // Reducimos las cajas de carga extra
-    setCajasCargaExtraRuta(prev => Math.max(0, prev - cant));
+    // Descontar únicamente las cajas de carga extra (sin tocar jamás las cajas de PP)
+    const aQuitar = Math.min(cantDisponible, cantExtra);
+
+    // Reducimos las cajas de carga extra del furgón
+    setCajasCargaExtraRuta(prev => Math.max(0, prev - aQuitar));
+
+    const nuevoDisponible = cantDisponible - aQuitar;
 
     setProductosDisponibles(prev => {
       const copia = { ...prev };
-      delete copia[prodId];
+      if (nuevoDisponible <= 0) {
+        delete copia[prodId];
+      } else {
+        copia[prodId] = nuevoDisponible;
+      }
       return copia;
     });
 
     setOrigenProductosDisponibles(prev => {
       const copia = { ...prev };
-      delete copia[prodId];
+      // Quitamos exclusivamente los orígenes de carga-extra de este producto
+      const origenesRestantes = (copia[prodId] || []).filter(o => o.origen !== 'carga-extra');
+      if (origenesRestantes.length === 0) {
+        delete copia[prodId];
+      } else {
+        copia[prodId] = origenesRestantes;
+      }
       return copia;
     });
 
-    // Limpiamos selecciones
-    setProductosSeleccionadosPD(prev => prev.filter(id => id !== prodId));
-    setCantidadesPD(prev => {
-      const c = { ...prev };
-      delete c[prodId];
-      return c;
-    });
-    mostrarToast(`↩️ Carga extra de ${getProductInfo(prodId).name} devuelta al catálogo.`);
+    // Ajustar selectores si superan el nuevo disponible
+    setCantidadesVentaSelector(prev => ({
+      ...prev,
+      [prodId]: Math.min(prev[prodId] || 0, nuevoDisponible)
+    }));
+    setCantidadesDestino(prev => ({
+      ...prev,
+      [prodId]: Math.min(prev[prodId] || 0, nuevoDisponible)
+    }));
+
+    mostrarToast(`↩️ ${aQuitar} caja(s) de carga extra de ${getProductInfo(prodId).name} devuelta(s) al catálogo.`);
   };
 
   const handleToggleSeleccionVenta = (prodId: string, disponible: number) => {
@@ -1050,7 +1083,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
     // 1. Pedidos pendientes de visita en Preventa (PP)
     if (pedidos.length > 0) {
-      const nombresPedidos = pedidos.map(p => `${p.cliente} (${p.productos.reduce((s, x) => s + x.cantidad, 0)} cj)`).join(', ');
+      const nombresPedidos = pedidos.map(p => `${p.cliente} (${p.productos.reduce((s, x) => s + x.cajas, 0)} cj)`).join(', ');
       errores.push({
         mensaje: `📋 Preventa (PP): Aún te queda(n) ${pedidos.length} pedido(s) por visitar: ${nombresPedidos}. Ve a la sección PP y registra si fue entregado, parcial o cancelado.`,
         modulo: 'pp'
@@ -1164,42 +1197,50 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
   // Resumen de Facturas del día (PP y Ventas directas)
   const facturasResumen = useMemo(() => {
-    const listado: { cliente: string; origen: string; rut?: string; celular?: string; estado: 'Entregada' | 'Pendiente'; monto: number }[] = [];
+    const listado: {
+      id?: string;
+      cliente: string;
+      negocio?: string;
+      tipo: 'PP' | 'PD';
+      origen: string;
+      rut?: string;
+      celular?: string;
+      estado: 'Entregada' | 'Pendiente';
+      monto: number;
+    }[] = [];
 
     // Facturas de ventas directas (exclusivamente ventas directas, sin pedidoId de PP)
     ventasRealizadas.filter(v => !v.pedidoId).forEach(v => {
       const nombreCli = typeof v.cliente === 'string'
         ? v.cliente
         : `${v.cliente.nombre} ${v.cliente.apellido}`.trim() || v.cliente.negocio || 'Cliente Venta Directa';
+      const negocioCli = typeof v.cliente === 'object' ? v.cliente.negocio : undefined;
       const celCli = typeof v.cliente === 'object' ? v.cliente.celular : undefined;
 
-      if (v.factura && v.factura !== 'No' && v.factura !== '—') {
+      if (v.factura === 'Sí' || v.estadoFactura === 'Pendiente' || v.estadoFactura === 'Entregada') {
         listado.push({
           cliente: nombreCli,
-          origen: 'Venta Directa',
+          negocio: negocioCli,
+          tipo: 'PD',
+          origen: 'Venta Directa (PD)',
           rut: v.rut,
           celular: celCli,
           estado: v.estadoFactura === 'Pendiente' ? 'Pendiente' : 'Entregada',
           monto: v.total
         });
-      } else if (v.estadoFactura === 'Pendiente') {
-        listado.push({
-          cliente: nombreCli,
-          origen: 'Venta Directa',
-          rut: v.rut,
-          celular: celCli,
-          estado: 'Pendiente',
-          monto: v.total
-        });
       }
     });
 
-    // Facturas de pedidos PP atendidos
+    // Facturas de pedidos PP atendidos (solo pedidos con entrega real > 0, nunca cancelados)
     pedidosAtendidos.forEach(p => {
-      if (p.factura && p.factura !== '—' && p.factura !== 'NO') {
+      if (p.estadoFinal !== 'Cancelado' && p.factura && p.factura !== '—' && p.factura !== 'NO' && p.factura !== 'No') {
+        const pedOriginal = [...PEDIDOS_INICIALES_VENDEDOR_1, ...PEDIDOS_INICIALES_VENDEDOR_2].find(po => po.id === p.id);
         listado.push({
+          id: p.id,
           cliente: p.cliente,
-          origen: `Pedido PP (${p.id})`,
+          negocio: pedOriginal?.negocio,
+          tipo: 'PP',
+          origen: `Preventa PP (${p.id})`,
           rut: p.rut,
           celular: p.telefono,
           estado: p.factura === 'Pendiente' ? 'Pendiente' : 'Entregada',
@@ -1648,7 +1689,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                     estado: estadoCalculado,
                     pago: '',
                     montoEfectivo: '',
-                    factura: pedido.factura === 'SÍ' ? 'Entregada' : '—'
+                    factura: pedido.factura === 'SÍ' ? 'Pendiente' : '—'
                   };
 
                   return (
@@ -1800,16 +1841,19 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                                 value={estadoForm.pago}
                                 onChange={(e) => {
                                   const nuevoPago = e.target.value;
-                                  setEstadosEntrega(prev => ({
-                                    ...prev,
-                                    [pedido.id]: {
-                                      ...(prev[pedido.id] || {}),
-                                      pago: nuevoPago,
-                                      montoEfectivo: prev[pedido.id]?.montoEfectivo || '',
-                                      estado: prev[pedido.id]?.estado || estadoCalculado,
-                                      factura: prev[pedido.id]?.factura || (pedido.factura === 'SÍ' ? 'Entregada' : '—')
-                                    }
-                                  }));
+                                  setEstadosEntrega(prev => {
+                                    const actual = prev[pedido.id] || {};
+                                    return {
+                                      ...prev,
+                                      [pedido.id]: {
+                                        ...actual,
+                                        pago: nuevoPago,
+                                        montoEfectivo: actual.montoEfectivo || '',
+                                        estado: actual.estado || estadoCalculado,
+                                        factura: actual.factura !== undefined ? actual.factura : (pedido.factura === 'SÍ' ? 'Pendiente' : '—')
+                                      }
+                                    };
+                                  });
                                 }}
                                 className="w-full h-9 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg"
                               >
@@ -1860,7 +1904,14 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
 
                             {/* Selector Factura */}
                             <div>
-                              <label className="text-[11px] font-bold text-slate-600 block mb-1">FACTURA</label>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[11px] font-bold text-slate-600 block">FACTURA FISCAL</label>
+                                {pedido.factura === 'SÍ' && (
+                                  <span className="text-[10px] font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded-full">
+                                    Solicitada en Preventa {pedido.rut ? `(RUT: ${pedido.rut})` : ''}
+                                  </span>
+                                )}
+                              </div>
                               <select
                                 value={estadoForm.factura}
                                 onChange={(e) => {
@@ -1872,18 +1923,18 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                                     }
                                   }));
                                 }}
-                                className="w-full h-9 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg"
+                                className="w-full h-9 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold"
                               >
-                                <option value="—">—</option>
-                                <option value="Entregada">Entregada</option>
-                                <option value="Pendiente">Pendiente</option>
+                                <option value="Pendiente">⚠️ Pendiente (Administración debe emitir/enviar)</option>
+                                <option value="Entregada">✓ Entregada (Entregada física en mano)</option>
+                                <option value="—">— (No requiere factura)</option>
                               </select>
                             </div>
                           </div>
 
-                          <div className="text-xs text-slate-600 bg-slate-100 p-2 rounded-lg flex items-center justify-between">
-                            <span>🧾 Factura solicitada por cliente:</span>
-                            <strong className="text-slate-900">{pedido.factura}</strong>
+                          <div className="text-xs text-slate-600 bg-slate-100 p-2.5 rounded-xl flex items-center justify-between">
+                            <span className="font-medium">🧾 Factura solicitada por cliente:</span>
+                            <strong className="text-slate-900">{pedido.factura} {pedido.rut ? `• RUT: ${pedido.rut}` : ''}</strong>
                           </div>
 
                           {/* Advertencia si falta pago */}
@@ -2013,22 +2064,21 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                     const cantDest = cantidadesDestino[prodId] || 0;
                     const esPrecioVisible = Boolean(preciosVisibles[`disp_${prodId}`]);
 
-                    // Determinar origen para mostrarlo claro
+                    // Determinar origen para mostrarlo claro (Opción B: Desglose nítido)
                     const origenes = origenProductosDisponibles[prodId] || [];
-                    const tieneLiberadoPP = origenes.some(o => o.origen === 'pedido-parcial' || o.origen === 'pedido-cancelado');
-                    const tieneExtra = origenes.some(o => o.origen === 'carga-extra');
-                    const etiquetaOrigen = tieneLiberadoPP
-                      ? '🔄 Liberado de pedido PP'
-                      : tieneExtra
-                        ? '📦 Carga extra del camión'
-                        : '📦 Stock disponible';
+                    const cantPP = origenes
+                      .filter(o => o.origen === 'pedido-parcial' || o.origen === 'pedido-cancelado')
+                      .reduce((sum, o) => sum + o.cantidad, 0);
+                    const cantExtra = origenes
+                      .filter(o => o.origen === 'carga-extra')
+                      .reduce((sum, o) => sum + o.cantidad, 0);
 
                     return (
                       <div key={prodId} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2.5 shadow-2xs">
                         {/* Fila superior: Cantidad de cajas, Nombre completo del producto y Precio */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-2.5">
-                            <div className="px-2 py-1 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-300 text-amber-950 font-black text-xs flex items-center gap-1 shrink-0 shadow-2xs mt-0.5" title="Cantidad de cajas disponibles en el camión">
+                            <div className="px-2 py-1 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-300 text-amber-950 font-black text-xs flex items-center gap-1 shrink-0 shadow-2xs mt-0.5" title="Cantidad total de cajas disponibles en el camión">
                               <span className="text-sm leading-none">📦</span>
                               <span className="text-sm font-extrabold">{cant}</span>
                               <span className="text-[10px] text-amber-800 font-semibold">{cant === 1 ? 'cj' : 'cjs'}</span>
@@ -2037,9 +2087,33 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                               <strong className="block text-slate-900 font-extrabold text-sm leading-snug">
                                 {prod.name}
                               </strong>
-                              <span className="text-[11px] text-slate-500 font-semibold block mt-0.5">
-                                {etiquetaOrigen}
-                              </span>
+                              {/* Desglose nítido de origen de las cajas (Opción B) */}
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                {cantPP > 0 && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md"
+                                    title="Cajas liberadas de pedidos PP que deben resolverse en ruta"
+                                  >
+                                    <span>🔄</span>
+                                    <span>{cantPP} {cantPP === 1 ? 'cj' : 'cjs'} Preventa PP</span>
+                                    <span className="text-amber-700 font-semibold">(🔒 en ruta)</span>
+                                  </span>
+                                )}
+                                {cantExtra > 0 && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-900 bg-sky-100/90 border border-sky-300 px-2 py-0.5 rounded-md"
+                                    title="Cajas cargadas como carga extra del furgón"
+                                  >
+                                    <span>📦</span>
+                                    <span>{cantExtra} {cantExtra === 1 ? 'cj' : 'cjs'} Carga extra</span>
+                                  </span>
+                                )}
+                                {cantPP === 0 && cantExtra === 0 && (
+                                  <span className="text-[11px] text-slate-500 font-semibold">
+                                    📦 Stock disponible
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -2114,19 +2188,20 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                             </button>
                           </div>
 
-                          {/* Quitar Carga Extra (Solo si es 100% Carga Extra, jamás si tiene cajas de Preventa PP) */}
-                          {tieneExtra && !tieneLiberadoPP ? (
+                          {/* Quitar Carga Extra (Si tiene cajas de carga extra, permite devolverlas al catálogo sin tocar las de PP) */}
+                          {cantExtra > 0 ? (
                             <button
                               type="button"
                               onClick={() => handleQuitarCargaExtra(prodId)}
-                              className="w-7 h-7 flex items-center justify-center text-xs text-red-500 hover:bg-red-50 rounded-lg cursor-pointer shrink-0 ml-auto"
-                              title="Quitar carga extra y devolver al catálogo"
+                              className="px-2 py-1 flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg cursor-pointer ml-auto transition-colors"
+                              title={`Devolver ${cantExtra} caja(s) de carga extra al catálogo`}
                             >
-                              ✕
+                              <span>✕</span>
+                              <span>Quitar extra ({cantExtra})</span>
                             </button>
-                          ) : tieneLiberadoPP ? (
+                          ) : cantPP > 0 ? (
                             <span
-                              className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-1 rounded-lg ml-auto shrink-0 select-none"
+                              className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-1 rounded-lg ml-auto shrink-0 select-none border border-amber-200"
                               title="Proviene de pedido PP: debe resolverse en ruta"
                             >
                               🔒 Resolver en ruta
@@ -2548,6 +2623,53 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
               </span>
             </div>
 
+            {/* Panel Ejecutivo / Semáforo de Control Rápido para el Celular */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className={`p-2.5 rounded-2xl border shadow-2xs ${
+                validacionCierre.puedeCerrar
+                  ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                  : 'bg-amber-50/80 border-amber-300 text-amber-950'
+              }`}>
+                <span className="text-[10px] font-black uppercase tracking-wider block opacity-75">
+                  Cajas Furgón
+                </span>
+                <strong className="text-base font-black block mt-0.5">
+                  {cajasInicialesRuta - validacionCierre.cajasSinResolver} / {cajasInicialesRuta}
+                </strong>
+                <span className="text-[10px] font-bold block mt-0.5">
+                  {validacionCierre.puedeCerrar ? '✅ 100% resueltas' : `⚠️ ${validacionCierre.cajasSinResolver} faltantes`}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-2xl bg-sky-50/80 border border-sky-300 text-sky-950 shadow-2xs">
+                <span className="text-[10px] font-black uppercase tracking-wider block opacity-75">
+                  Recaudado
+                </span>
+                <strong className="text-base font-black block mt-0.5">
+                  {formatCLP(totalRecaudadoReal)}
+                </strong>
+                <span className="text-[10px] font-bold text-sky-800 block mt-0.5">
+                  💵 {ventasRealizadas.length} ventas
+                </span>
+              </div>
+
+              <div className={`p-2.5 rounded-2xl border shadow-2xs ${
+                totalCuentasPorCobrar > 0
+                  ? 'bg-amber-50/80 border-amber-300 text-amber-950'
+                  : 'bg-slate-50 border-slate-200 text-slate-800'
+              }`}>
+                <span className="text-[10px] font-black uppercase tracking-wider block opacity-75">
+                  Por Cobrar
+                </span>
+                <strong className="text-base font-black block mt-0.5">
+                  {formatCLP(totalCuentasPorCobrar)}
+                </strong>
+                <span className="text-[10px] font-bold block mt-0.5">
+                  {pendientesCobroCount > 0 ? `💳 ${pendientesCobroCount} cliente(s)` : '✓ Al día'}
+                </span>
+              </div>
+            </div>
+
             {/* 1. CUADRE DE CAJAS */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
               <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
@@ -2911,36 +3033,44 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                   </div>
                 </div>
 
+                {/* LISTADO DE FACTURAS PENDIENTES */}
                 {facturasResumen.pendientes.length > 0 && (() => {
-                  const pendientesPD = facturasResumen.pendientes.filter(f => f.origen === 'Venta Directa');
-                  const pendientesPP = facturasResumen.pendientes.filter(f => f.origen.includes('Pedido PP'));
+                  const pendientesPD = facturasResumen.pendientes.filter(f => f.tipo === 'PD');
+                  const pendientesPP = facturasResumen.pendientes.filter(f => f.tipo === 'PP');
 
                   return (
                     <div className="mt-2.5 space-y-3">
-                      {/* Facturas pendientes PD */}
-                      {pendientesPD.length > 0 && (
+                      {/* Facturas pendientes PP */}
+                      {pendientesPP.length > 0 && (
                         <div className="space-y-1.5">
-                          <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
-                            <span>🧾</span> Facturas pendientes PD
+                          <span className="text-[11px] font-black text-sky-900 flex items-center gap-1">
+                            <span>📋</span> Facturas pendientes Preventa (PP) — {pendientesPP.length} cliente(s)
                           </span>
                           <div className="space-y-1.5">
-                            {pendientesPD.map((f, i) => (
-                              <div key={i} className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-0.5">
-                                <div className="flex items-center gap-1 text-slate-900 font-bold">
-                                  <span>👤</span> <span>{f.cliente}</span>
+                            {pendientesPP.map((f, i) => (
+                              <div key={i} className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 text-xs space-y-0.5 shadow-2xs">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1 text-slate-900 font-bold">
+                                    <span>👤</span> <span>{f.cliente}</span>
+                                    {f.negocio && <span className="text-[11px] text-slate-500 font-medium">({f.negocio})</span>}
+                                  </div>
+                                  <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-md">
+                                    Pendiente envío
+                                  </span>
                                 </div>
                                 {f.rut && (
-                                  <div className="flex items-center gap-1 text-slate-600 font-medium text-[11px]">
+                                  <div className="flex items-center gap-1 text-slate-700 font-medium text-[11px]">
                                     <span>🧾</span> <span>RUT: {f.rut}</span>
                                   </div>
                                 )}
                                 {f.celular && (
-                                  <div className="flex items-center gap-1 text-sky-800 font-medium text-[11px]">
+                                  <div className="flex items-center gap-1 text-sky-800 font-semibold text-[11px]">
                                     <span>📱</span> <span>WhatsApp: {f.celular}</span>
                                   </div>
                                 )}
-                                <div className="flex items-center gap-1 text-emerald-800 font-black pt-0.5">
-                                  <span>💰</span> <span>Total {formatCLP(f.monto)}</span>
+                                <div className="flex items-center justify-between text-emerald-800 font-black pt-1 border-t border-amber-200/60 mt-1">
+                                  <span className="text-[10px] text-slate-500 font-medium">📋 {f.origen}</span>
+                                  <span className="text-xs">Total {formatCLP(f.monto)}</span>
                                 </div>
                               </div>
                             ))}
@@ -2948,30 +3078,37 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                         </div>
                       )}
 
-                      {/* Facturas pendientes PP */}
-                      {pendientesPP.length > 0 && (
+                      {/* Facturas pendientes PD */}
+                      {pendientesPD.length > 0 && (
                         <div className="space-y-1.5">
-                          <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
-                            <span>🧾</span> Facturas pendientes PP
+                          <span className="text-[11px] font-black text-emerald-900 flex items-center gap-1">
+                            <span>🛒</span> Facturas pendientes Venta Directa (PD) — {pendientesPD.length} cliente(s)
                           </span>
                           <div className="space-y-1.5">
-                            {pendientesPP.map((f, i) => (
-                              <div key={i} className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-0.5">
-                                <div className="flex items-center gap-1 text-slate-900 font-bold">
-                                  <span>👤</span> <span>{f.cliente}</span>
+                            {pendientesPD.map((f, i) => (
+                              <div key={i} className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 text-xs space-y-0.5 shadow-2xs">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1 text-slate-900 font-bold">
+                                    <span>👤</span> <span>{f.cliente}</span>
+                                    {f.negocio && <span className="text-[11px] text-slate-500 font-medium">({f.negocio})</span>}
+                                  </div>
+                                  <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-md">
+                                    Pendiente envío
+                                  </span>
                                 </div>
                                 {f.rut && (
-                                  <div className="flex items-center gap-1 text-slate-600 font-medium text-[11px]">
+                                  <div className="flex items-center gap-1 text-slate-700 font-medium text-[11px]">
                                     <span>🧾</span> <span>RUT: {f.rut}</span>
                                   </div>
                                 )}
                                 {f.celular && (
-                                  <div className="flex items-center gap-1 text-sky-800 font-medium text-[11px]">
+                                  <div className="flex items-center gap-1 text-sky-800 font-semibold text-[11px]">
                                     <span>📱</span> <span>WhatsApp: {f.celular}</span>
                                   </div>
                                 )}
-                                <div className="flex items-center gap-1 text-emerald-800 font-black pt-0.5">
-                                  <span>💰</span> <span>Total {formatCLP(f.monto)}</span>
+                                <div className="flex items-center justify-between text-emerald-800 font-black pt-1 border-t border-amber-200/60 mt-1">
+                                  <span className="text-[10px] text-slate-500 font-medium">🛒 Venta Directa</span>
+                                  <span className="text-xs">Total {formatCLP(f.monto)}</span>
                                 </div>
                               </div>
                             ))}
@@ -2982,9 +3119,37 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                   );
                 })()}
 
-                {facturasResumen.pendientes.length === 0 && facturasResumen.entregadas.length > 0 && (
-                  <div className="mt-1.5 text-[11px] text-emerald-700 font-semibold px-1">
-                    ✓ Todas las facturas solicitadas fueron entregadas conforme en ruta.
+                {/* LISTADO DE FACTURAS ENTREGADAS CONFORME */}
+                {facturasResumen.entregadas.length > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5">
+                    <span className="text-[11px] font-black text-emerald-800 flex items-center gap-1">
+                      <span>✓</span> Facturas entregadas conforme en ruta ({facturasResumen.entregadas.length})
+                    </span>
+                    <div className="space-y-1.5">
+                      {facturasResumen.entregadas.map((f, i) => (
+                        <div key={i} className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs flex justify-between items-center shadow-2xs">
+                          <div>
+                            <div className="flex items-center gap-1 text-slate-900 font-bold">
+                              <span>👤 {f.cliente}</span>
+                              {f.negocio && <span className="text-[11px] text-slate-500 font-medium">({f.negocio})</span>}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                              {f.rut && <span>🧾 RUT: {f.rut}</span>}
+                              <span>• {f.origen}</span>
+                            </div>
+                          </div>
+                          <strong className="text-emerald-800 text-xs font-black shrink-0 ml-2">
+                            {formatCLP(f.monto)}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {facturasResumen.listado.length === 0 && (
+                  <div className="mt-2 text-center py-2 text-[11px] text-slate-400 font-medium">
+                    No se solicitaron facturas durante la ruta de hoy.
                   </div>
                 )}
               </div>
@@ -3041,7 +3206,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                           {err.modulo === 'pd' && (
                             <button
                               type="button"
-                              onClick={() => setSeccion('venta-directa')}
+                              onClick={() => setSeccion('venta')}
                               className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shrink-0 cursor-pointer shadow-2xs"
                             >
                               Ir a Venta Directa (PD) →
@@ -3050,7 +3215,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                           {err.modulo === 'destino' && (
                             <button
                               type="button"
-                              onClick={() => setSeccion('destino')}
+                              onClick={() => setSeccion('venta')}
                               className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] rounded-lg shrink-0 cursor-pointer shadow-2xs"
                             >
                               Ir a Destino →
