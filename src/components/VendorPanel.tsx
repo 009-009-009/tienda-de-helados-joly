@@ -2136,15 +2136,15 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadVentaSelector(prodId, -1, cant)}
-                                className="w-6 h-6 text-sm bg-white hover:bg-emerald-100 border border-emerald-300 text-black font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none"
+                                className="w-6 h-6 text-sm bg-slate-900 hover:bg-slate-800 text-white font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none shadow-xs"
                               >
                                 −
                               </button>
-                              <span className="text-xs font-black text-black w-5 text-center">{cantVenta}</span>
+                              <span className="text-xs font-black text-slate-950 w-5 text-center">{cantVenta}</span>
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadVentaSelector(prodId, 1, cant)}
-                                className="w-6 h-6 text-sm bg-white hover:bg-emerald-100 border border-emerald-300 text-black font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none"
+                                className="w-6 h-6 text-sm bg-slate-900 hover:bg-slate-800 text-white font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none shadow-xs"
                               >
                                 +
                               </button>
@@ -2152,7 +2152,7 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                             <button
                               type="button"
                               onClick={() => handleVenderProductoDirecto(prodId)}
-                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
+                              className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
                               title="Sumar este producto a la venta directa"
                             >
                               <span>Vender</span>
@@ -2163,27 +2163,27 @@ export const VendorPanel: React.FC<VendorPanelProps> = ({ onBackToStore }) => {
                           {/* Fila 2: Control Destino a la izquierda + Quitar extra / Resolver en ruta a la derecha */}
                           <div className="flex items-center justify-between gap-1 w-full">
                             {/* Control Destino (Merma / Sobrante / Compensación) */}
-                            <div className="flex items-center gap-1 bg-amber-50/80 border border-amber-300 px-2 py-1 rounded-xl shadow-2xs shrink-0">
+                            <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-300 px-2.5 py-1 rounded-xl shadow-2xs shrink-0">
                               <span className="text-[11px] font-bold text-amber-950">Destino:</span>
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadDestino(prodId, -1, cant)}
-                                className="w-5 h-5 text-sm bg-white hover:bg-amber-100 border border-amber-300 text-black font-black rounded cursor-pointer flex items-center justify-center active:scale-95 leading-none"
+                                className="w-6 h-6 text-sm bg-slate-900 hover:bg-slate-800 text-white font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none shadow-xs"
                               >
                                 −
                               </button>
-                              <span className="text-xs font-black text-black w-4 text-center">{cantDest}</span>
+                              <span className="text-xs font-black text-slate-950 w-4 text-center">{cantDest}</span>
                               <button
                                 type="button"
                                 onClick={() => handleCambiarCantidadDestino(prodId, 1, cant)}
-                                className="w-5 h-5 text-sm bg-white hover:bg-amber-100 border border-amber-300 text-black font-black rounded cursor-pointer flex items-center justify-center active:scale-95 leading-none"
+                                className="w-6 h-6 text-sm bg-slate-900 hover:bg-slate-800 text-white font-black rounded-lg cursor-pointer flex items-center justify-center active:scale-95 leading-none shadow-xs"
                               >
                                 +
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleEnviarADestino(prodId)}
-                                className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-xs cursor-pointer ml-0.5 shadow-2xs"
+                                className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-xs cursor-pointer ml-0.5 shadow-2xs active:scale-95"
                                 title="Enviar a destino (merma, compensación o sobrante)"
                               >
                                 →
