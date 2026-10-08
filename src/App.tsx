@@ -313,8 +313,8 @@ export default function App() {
         </div>
       </section>
 
-      {/* Contenido Principal / Catálogo en la cuadrícula de tarjetas azules */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6">
+      {/* Contenido Principal / Catálogo en la cuadrícula de tarjetas de dos en dos */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-2.5 sm:px-6 py-4 sm:py-6">
         
         {/* Barra de conteo de productos */}
         <div className="flex items-center justify-between mb-4 text-xs text-slate-800 font-medium bg-white/60 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-slate-200/60 shadow-xs">
@@ -356,7 +356,7 @@ export default function App() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
             {filteredProducts.map((product) => {
               const inCart = cart.find((item) => item.product.id === product.id);
               const quantity = inCart ? inCart.quantity : 0;
