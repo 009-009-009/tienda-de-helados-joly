@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PRODUCTS, CATEGORIES, CatalogProduct, CartItem, WHATSAPP_DISPLAY, WHATSAPP_PHONE } from './data/catalog';
 import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
@@ -6,22 +6,42 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { VercelGuideModal } from './components/VercelGuideModal';
 import { ImageSyncBar } from './components/ImageSyncBar';
 import { VendorPanel } from './components/VendorPanel';
+import { AdminPanel } from './components/admin/AdminPanel';
 import { Sparkles, ShieldCheck, HelpCircle, Phone, Search, IceCream, Truck, AlertCircle, Clock } from 'lucide-react';
 import { formatCLP } from './utils/format';
 import { JOLY_OFFICIAL_LOGO } from './assets/officialLogo';
 
 export default function App() {
-  const [vistaActiva, setVistaActiva] = useState<'tienda' | 'vendedor'>(() => {
+  const [vistaActiva, setVistaActiva] = useState<'tienda' | 'vendedor' | 'admin'>(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('admin') || window.location.hash.includes('admin')) {
+        return 'admin';
+      }
       if (urlParams.has('vendedor') || window.location.hash.includes('vendedor')) {
         return 'vendedor';
       }
       const saved = sessionStorage.getItem('joly_vista_activa');
-      if (saved === 'vendedor') return 'vendedor';
+      if (saved === 'admin' || saved === 'vendedor') return saved as any;
     }
     return 'tienda';
   });
+
+  // Sincronizar navegación por hash si el usuario cambia el hash en el navegador
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'admin') {
+        setVistaActiva('admin');
+      } else if (hash === 'vendedor') {
+        setVistaActiva('vendedor');
+      } else if (!hash) {
+        setVistaActiva('tienda');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Modal de clave de acceso para vendedores
   const [mostrarModalClave, setMostrarModalClave] = useState<boolean>(false);
@@ -42,7 +62,14 @@ export default function App() {
   const handleVerificarPin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const pinLimpio = pinIngresado.trim();
-    // Claves válidas operativas: 1234 (fácil para vendedores) o 2026
+    // Clave para administración: 9999 o admin
+    if (pinLimpio === '9999' || pinLimpio.toLowerCase() === 'admin') {
+      setMostrarModalClave(false);
+      handleCambiarVista('admin');
+      return;
+    }
+
+    // Claves válidas operativas para vendedores: 1234, 2026, 7788
     if (pinLimpio === '1234' || pinLimpio === '2026' || pinLimpio === '7788') {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('joly_vendedor_autenticado', 'true');
@@ -50,15 +77,15 @@ export default function App() {
       setMostrarModalClave(false);
       handleCambiarVista('vendedor');
     } else {
-      setErrorPin('PIN incorrecto. Ingresa el código asignado a tu furgón (Ej: 1234).');
+      setErrorPin('PIN incorrecto. Vendedores: 1234 | Administración: 9999');
     }
   };
 
-  const handleCambiarVista = (nuevaVista: 'tienda' | 'vendedor') => {
+  const handleCambiarVista = (nuevaVista: 'tienda' | 'vendedor' | 'admin') => {
     setVistaActiva(nuevaVista);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('joly_vista_activa', nuevaVista);
-      window.location.hash = nuevaVista === 'vendedor' ? 'vendedor' : '';
+      window.location.hash = nuevaVista === 'tienda' ? '' : nuevaVista;
     }
   };
 
@@ -119,6 +146,16 @@ export default function App() {
   const totalBoxes = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.reduce((sum, item) => sum + item.quantity * item.product.boxPrice, 0);
 
+  // Si la vista activa es el Panel de Administración
+  if (vistaActiva === 'admin') {
+    return (
+      <AdminPanel 
+        onVolverTienda={() => handleCambiarVista('tienda')}
+        onIrAVendedor={() => handleCambiarVista('vendedor')}
+      />
+    );
+  }
+
   // Si la vista activa es el Panel del Vendedor, renderizamos el panel operativo
   if (vistaActiva === 'vendedor') {
     return <VendorPanel onBackToStore={() => handleCambiarVista('tienda')} />;
@@ -138,6 +175,7 @@ export default function App() {
         onOpenCart={() => setIsCartOpen(true)}
         onOpenGuide={() => handleOpenGuide()}
         onOpenVendorPanel={handleSolicitarAccesoVendedor}
+        onOpenAdminPanel={() => handleCambiarVista('admin')}
       />
 
       {/* Franja superior blanca con el banner amigable original */}
@@ -492,9 +530,23 @@ export default function App() {
                 </button>
               </div>
 
-              <p className="text-[10px] text-slate-400">
-                💡 Clave de prueba vendedor: <strong className="text-slate-600">1234</strong>
-              </p>
+              <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>💡 <strong>1234</strong>: Vendedor</span>
+                <span>🏢 <strong>9999</strong>: Administración</span>
+              </div>
+
+              <div className="text-center pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarModalClave(false);
+                    handleCambiarVista('admin');
+                  }}
+                  className="text-[11px] font-bold text-sky-700 hover:text-sky-900 hover:underline cursor-pointer"
+                >
+                  🏢 Abrir Panel de Administración directamente →
+                </button>
+              </div>
             </form>
           </div>
         </div>

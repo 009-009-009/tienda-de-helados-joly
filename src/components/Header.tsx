@@ -14,6 +14,7 @@ interface HeaderProps {
   onOpenCart: () => void;
   onOpenGuide: () => void;
   onOpenVendorPanel?: () => void;
+  onOpenAdminPanel?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,7 +26,8 @@ export const Header: React.FC<HeaderProps> = ({
   totalAmount,
   onOpenCart,
   onOpenGuide,
-  onOpenVendorPanel
+  onOpenVendorPanel,
+  onOpenAdminPanel
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -72,16 +74,29 @@ export const Header: React.FC<HeaderProps> = ({
             🚚 <strong>Reparto Temuco</strong>: <span className="text-[#EEFF00] font-bold">Miércoles y Jueves</span>
           </span>
         </div>
-        {onOpenVendorPanel && (
-          <button
-            type="button"
-            onClick={onOpenVendorPanel}
-            className="text-[10px] sm:text-xs font-black bg-[#EEFF00] text-slate-950 px-2.5 py-0.5 rounded-full shrink-0 hover:bg-yellow-300 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-          >
-            <span>👤</span>
-            <span>Panel Vendedor →</span>
-          </button>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onOpenAdminPanel && (
+            <button
+              type="button"
+              onClick={onOpenAdminPanel}
+              className="text-[10px] sm:text-xs font-bold bg-slate-800 hover:bg-slate-700 text-sky-200 hover:text-white px-2.5 py-0.5 rounded-full shrink-0 transition-colors cursor-pointer flex items-center gap-1 border border-slate-700 shadow-2xs"
+              title="Abrir Módulo de Administración e Inventario"
+            >
+              <span>🏢</span>
+              <span>Administración</span>
+            </button>
+          )}
+          {onOpenVendorPanel && (
+            <button
+              type="button"
+              onClick={onOpenVendorPanel}
+              className="text-[10px] sm:text-xs font-black bg-[#EEFF00] text-slate-950 px-2.5 py-0.5 rounded-full shrink-0 hover:bg-yellow-300 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+            >
+              <span>👤</span>
+              <span>Panel Vendedor →</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Franja de Marca Principal: JOLY & HELADOS PANDA */}
