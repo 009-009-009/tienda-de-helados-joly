@@ -1,10 +1,13 @@
 export type MovimientoTipo = 
+  | 'INVENTARIO_INICIAL_APERTURA'
   | 'RECEPCION_FACTURA' 
   | 'INGRESO_MANUAL' 
   | 'ASIGNACION_FURGON' 
   | 'RETORNO_FURGON' 
   | 'AJUSTE_MERMA_BODEGA' 
-  | 'AJUSTE_CONTEO_FISICO';
+  | 'AJUSTE_CONTEO_FISICO'
+  | 'INGRESO_EXTRAORDINARIO'
+  | 'DEVOLUCION_EXTERNA';
 
 export type UbicacionStock = 
   | 'BODEGA_CENTRAL' 
@@ -13,7 +16,14 @@ export type UbicacionStock =
   | 'PROVEEDOR' 
   | 'EXTERNO' 
   | 'MERMA' 
-  | 'AJUSTE';
+  | 'AJUSTE'
+  | 'APERTURA_INICIAL';
+
+export type MatchStatusFactura = 
+  | 'coincidencia_exacta' 
+  | 'requiere_confirmacion' 
+  | 'descontinuado' 
+  | 'manual';
 
 export interface ItemRecepcionFactura {
   productId: string;
@@ -24,6 +34,10 @@ export interface ItemRecepcionFactura {
   cajasRecibidasFisicas: number;
   precioUnitarioCaja?: number;
   observaciones?: string;
+  codigoProveedor?: string;
+  nombreFacturaOriginal?: string;
+  matchStatus?: MatchStatusFactura;
+  descartado?: boolean;
 }
 
 export interface RecepcionFacturaDoc {
@@ -35,7 +49,7 @@ export interface RecepcionFacturaDoc {
   archivoNombre?: string;
   archivoTipo?: string;
   archivoTamano?: string;
-  estado: 'borrador_revision' | 'confirmada_ingresada' | 'rechazada';
+  estado: 'borrador_revision' | 'confirmada_ingresada' | 'rechazada' | 'modo_prueba_sin_stock';
   items: ItemRecepcionFactura[];
   totalCajasFacturadas: number;
   totalCajasRecibidas: number;
@@ -43,19 +57,31 @@ export interface RecepcionFacturaDoc {
   confirmadaAt?: string;
   confirmadaPor?: string;
   esDemo: boolean;
+  esModoPrueba?: boolean;
+}
+
+export type TipoAjusteManual = 
+  | 'inventario_inicial'
+  | 'ajuste_conteo'
+  | 'ingreso_extraordinario'
+  | 'devolucion_externa'
+  | 'merma_bodega';
+
+export interface ItemAjusteManual {
+  productId: string;
+  productName: string;
+  cajas: number;
+  stockPrevio?: number;
+  stockNuevo?: number;
 }
 
 export interface IngresoManualDoc {
   id: string;
   fecha: string;
-  tipoAjuste: 'ingreso_extraordinario' | 'ajuste_conteo' | 'devolucion_cliente' | 'merma_bodega';
+  tipoAjuste: TipoAjusteManual;
   motivo: string;
   responsable: string;
-  items: {
-    productId: string;
-    productName: string;
-    cajas: number;
-  }[];
+  items: ItemAjusteManual[];
   esDemo: boolean;
 }
 

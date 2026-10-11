@@ -9,11 +9,30 @@ export const PROVEEDORES_DEMO: string[] = [
 ];
 
 /**
- * Stock inicial de demostración para Administración.
- * Claramente rotulado como [DEMO - Demostración] para no confundirse con datos reales.
+ * Stock base limpio para inicio operativo real:
+ * - Los 31 productos del catálogo vigentes.
+ * - 0 cajas en Bodega Central (listas para registrar conteo físico real o inventario inicial de apertura).
+ * - 0 cajas en Furgón 1.
+ * - 0 cajas en Furgón 2.
+ */
+export const STOCK_BASE_INICIAL_LIMPIO: StockProductoUnificado[] = PRODUCTS.map((prod) => ({
+  productId: prod.id,
+  productName: prod.name,
+  categoryName: prod.categoryName,
+  unitsPerBox: prod.unitsPerBox,
+  cajasBodega: 0,
+  cajasAsignadasFurgon1: 0,
+  cajasAsignadasFurgon2: 0,
+  totalEmpresa: 0,
+  stockMinimoAlerta: 10,
+  ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16),
+  esDemo: false
+}));
+
+/**
+ * Stock de demostración anterior (para pruebas visuales opcionales)
  */
 export const INITIAL_STOCK_DEMO: StockProductoUnificado[] = PRODUCTS.map((prod, index) => {
-  // Asignar cantidades de prueba coherentes para el catálogo
   const cajasBodega = 25 + ((index * 7) % 35);
   const cajasFurgon1 = (index % 4 === 0) ? 4 : (index % 3 === 0) ? 2 : 0;
   const cajasFurgon2 = (index % 5 === 0) ? 3 : 0;
@@ -49,39 +68,8 @@ export const MOVIMIENTOS_INICIALES_DEMO: MovimientoInventario[] = [
     destino: 'BODEGA_CENTRAL',
     totalCajas: 45,
     items: [
-      { productId: 'cassata-1l-chirimoya-alegre', productName: 'Cassata 1 L - Chirimoya Alegre', cajas: 20 },
-      { productId: 'paleta-tunga-frambuesa', productName: 'Paleta Tunga Frambuesa', cajas: 25 }
-    ],
-    esDemo: true
-  },
-  {
-    id: 'MOV-DEMO-002',
-    fecha: '2026-10-08 07:30',
-    tipo: 'ASIGNACION_FURGON',
-    referenciaDoc: 'RUTA-F01-20261008',
-    descripcion: 'Carga inicial despachada a Furgón 1 (Ruta Poniente)',
-    responsable: 'Carlos Muñoz (Supervisor)',
-    origen: 'BODEGA_CENTRAL',
-    destino: 'FURGON_1',
-    totalCajas: 33,
-    items: [
-      { productId: 'cassata-1l-chirimoya-alegre', productName: 'Cassata 1 L - Chirimoya Alegre', cajas: 4 },
-      { productId: 'cassata-1l-frutilla', productName: 'Cassata 1 L - Frutilla', cajas: 6 }
-    ],
-    esDemo: true
-  },
-  {
-    id: 'MOV-DEMO-003',
-    fecha: '2026-10-07 18:00',
-    tipo: 'RETORNO_FURGON',
-    referenciaDoc: 'CIERRE-F01-20261007',
-    descripcion: 'Retorno sobrante de ruta Furgón 1 apto para reventa',
-    responsable: 'Carlos Muñoz (Supervisor)',
-    origen: 'FURGON_1',
-    destino: 'BODEGA_CENTRAL',
-    totalCajas: 1,
-    items: [
-      { productId: 'cassata-1l-chirimoya-alegre', productName: 'Cassata 1 L - Chirimoya Alegre', cajas: 1 }
+      { productId: 'cas-1l-chirimoya-alegre', productName: 'Cassata 1 L - Chirimoya Alegre', cajas: 20 },
+      { productId: 'postre-paleta-tunga', productName: 'Paleta Tunga', cajas: 25 }
     ],
     esDemo: true
   }
@@ -102,30 +90,32 @@ export const FACTURAS_DEMO: RecepcionFacturaDoc[] = [
     archivoTamano: '1.4 MB',
     estado: 'confirmada_ingresada',
     totalCajasFacturadas: 46,
-    totalCajasRecibidas: 45, // 1 caja menos por merma en transporte del proveedor
+    totalCajasRecibidas: 45,
     totalMontoNeto: 580000,
     confirmadaAt: '2026-10-08 09:15',
     confirmadaPor: 'María Paz',
     items: [
       {
-        productId: 'cassata-1l-chirimoya-alegre',
+        productId: 'cas-1l-chirimoya-alegre',
         productName: 'Cassata 1 L - Chirimoya Alegre',
         categoryName: 'Cassatas 1 L',
         unitsPerBox: 6,
         cajasFacturadas: 20,
         cajasRecibidasFisicas: 20,
-        precioUnitarioCaja: 13500,
-        observaciones: 'Llegó en perfecto estado de temperatura (-18°C)'
+        precioUnitarioCaja: 14536,
+        observaciones: 'Llegó en perfecto estado de temperatura (-18°C)',
+        matchStatus: 'coincidencia_exacta'
       },
       {
-        productId: 'paleta-tunga-frambuesa',
-        productName: 'Paleta Tunga Frambuesa',
-        categoryName: 'Helados Individuales',
-        unitsPerBox: 24,
+        productId: 'postre-paleta-tunga',
+        productName: 'Paleta Tunga',
+        categoryName: 'Postres y Especiales',
+        unitsPerBox: 44,
         cajasFacturadas: 26,
         cajasRecibidasFisicas: 25,
-        precioUnitarioCaja: 11900,
-        observaciones: '1 caja rechazada por empaque deshecho en camión proveedor'
+        precioUnitarioCaja: 13467,
+        observaciones: '1 caja rechazada por empaque deshecho en camión proveedor',
+        matchStatus: 'coincidencia_exacta'
       }
     ],
     esDemo: true

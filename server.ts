@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -156,6 +157,100 @@ async function startServer() {
     } catch (err: any) {
       console.error('[Upload Error]', err);
       return res.status(500).json({ error: err.message || 'Error guardando archivo' });
+    }
+  });
+
+  // API para lectura inteligente y OCR de Facturas / Guías (Costo Cero mediante Gemini 3.5 / 3.8 Flash)
+  app.post('/api/parse-invoice', async (req, res) => {
+    try {
+      const { base64Data, mimeType, fileName } = req.body;
+      if (!base64Data) {
+        return res.status(400).json({ error: 'Falta base64Data para analizar la factura' });
+      }
+
+      const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
+      const cleanMime = mimeType || (base64Data.startsWith('data:application/pdf') ? 'application/pdf' : 'image/jpeg');
+
+      const prompt = `Eres un extractor experto de facturas y guías de recepción de fábrica de helados y alimentos en Chile.
+Analiza con máxima rigurosidad y precisión este documento de factura o guía adjunto.
+Extrae los datos y devuélvelos EXCLUSIVAMENTE en formato JSON plano y válido (sin bloques markdown \`\`\` ni texto explicativo antes o después):
+{
+  "numeroFactura": "string con el folio o número de factura / guía (ej: FAC-98402 o 12345)",
+  "proveedor": "string con la razón social o nombre comercial del proveedor emisor",
+  "rutProveedor": "string con el RUT del proveedor si es visible",
+  "fecha": "YYYY-MM-DD fecha de emisión o recepción detectada",
+  "items": [
+    {
+      "codigoProveedor": "string con código de artículo, SKU o código de barras si figura",
+      "descripcion": "string con el nombre o descripción literal del producto en la factura",
+      "cantidadCajas": 10, // número entero con la cantidad de cajas, bultos o unidades facturadas
+      "precioUnitario": 0 // precio unitario neto si está visible, o 0
+    }
+  ]
+}
+
+Reglas críticas:
+1. Extrae cada fila de producto facturado con su descripción exacta y cantidad de cajas.
+2. Si la descripción menciona paletas o cassatas, conserva los nombres y sabores tal como aparecen.
+3. No inventes productos ni cajas que no figuren en el documento.
+4. Devuelve solo el objeto JSON puro para que pueda parsearse con JSON.parse.`;
+
+      const ai = new GoogleGenAI();
+      const modelsToTry = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-2.5-pro'];
+      let textResponse = '';
+      let lastError: any = null;
+
+      for (const modelName of modelsToTry) {
+        try {
+          const result = await ai.models.generateContent({
+            model: modelName,
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: cleanMime,
+                      data: cleanBase64
+                    }
+                  },
+                  { text: prompt }
+                ]
+              }
+            ]
+          });
+          textResponse = result.text || '';
+          if (textResponse.trim()) {
+            console.log(`[Invoice OCR] Éxito procesando factura con ${modelName}`);
+            break;
+          }
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[Invoice OCR] Intento con ${modelName} falló (${err.message?.slice(0, 80)}). Probando siguiente...`);
+        }
+      }
+
+      if (!textResponse.trim()) {
+        throw lastError || new Error('No se pudo extraer texto del documento');
+      }
+
+      let jsonStr = textResponse.trim();
+      // Eliminar posibles delimitadores de código markdown si el modelo los incluyó
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      }
+
+      const parsedData = JSON.parse(jsonStr);
+
+      return res.json({
+        success: true,
+        data: parsedData
+      });
+    } catch (err: any) {
+      console.error('[Invoice OCR Error]', err);
+      return res.status(500).json({ 
+        error: err.message || 'No fue posible interpretar la factura automáticamente. Puedes ingresar los productos manualmente.' 
+      });
     }
   });
 
