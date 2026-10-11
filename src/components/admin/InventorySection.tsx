@@ -147,9 +147,13 @@ export function InventorySection() {
   const [mensajeExitoManual, setMensajeExitoManual] = useState<string | null>(null);
 
   // Sub-estado: Inventario inicial de apertura (Multilínea)
-  const [itemsApertura, setItemsApertura] = useState<{ productId: string; cajas: number }[]>(() => 
-    PRODUCTS.slice(0, 5).map(p => ({ productId: p.id, cajas: 20 }))
-  );
+  const [itemsApertura, setItemsApertura] = useState<{ productId: string; cajas: number }[]>([]);
+
+  // Productos disponibles para agregar al inventario inicial (excluye los ya asignados)
+  const productosDisponiblesApertura = useMemo(() => {
+    const idsPresentes = new Set(itemsApertura.map(it => it.productId).filter(Boolean));
+    return PRODUCTS.filter(p => !idsPresentes.has(p.id));
+  }, [itemsApertura]);
 
   // Sub-estado: Ajuste por conteo físico unitario
   const [prodConteoId, setProdConteoId] = useState(PRODUCTS[0]?.id || '');
@@ -508,9 +512,26 @@ export function InventorySection() {
       return;
     }
 
-    const itemsValidos = itemsApertura.filter(it => it.cajas > 0);
+    if (itemsApertura.length === 0) {
+      alert('Debes agregar al menos un producto al inventario inicial.');
+      return;
+    }
+
+    const filasVacias = itemsApertura.filter(it => !it.productId);
+    if (filasVacias.length > 0) {
+      alert('Hay filas vacías sin producto seleccionado. Por favor selecciona el producto o elimina las filas vacías antes de guardar.');
+      return;
+    }
+
+    const ids = itemsApertura.map(it => it.productId);
+    if (new Set(ids).size !== ids.length) {
+      alert('No se permiten productos duplicados en la misma operación de inventario inicial.');
+      return;
+    }
+
+    const itemsValidos = itemsApertura.filter(it => it.productId && it.cajas > 0);
     if (itemsValidos.length === 0) {
-      alert('Debes indicar al menos una cantidad mayor a 0 para el inventario inicial.');
+      alert('Debes ingresar al menos una cantidad mayor a 0 cajas para el inventario inicial.');
       return;
     }
 
@@ -1690,92 +1711,227 @@ export function InventorySection() {
 
                 {/* Tabla multilínea de productos para apertura */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    <span>Productos y Cajas Físicas en Bodega ({itemsApertura.length})</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    <span>
+                      Productos y Cajas Físicas en Bodega ({itemsApertura.filter(it => it.productId).length} de {PRODUCTS.length})
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setItemsApertura(PRODUCTS.map(p => ({ productId: p.id, cajas: 0 })));
+                        }}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs shadow-xs transition-colors flex items-center space-x-1.5"
+                      >
+                        <Layers className="w-3.5 h-3.5" />
+                        <span>Pre-cargar los 31 productos con 0 cajas</span>
+                      </button>
+
+                      {itemsApertura.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setItemsApertura([])}
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg font-medium text-xs transition-colors"
+                        >
+                          Limpiar lista
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-xl max-h-[440px] overflow-y-auto bg-white shadow-xs">
+                    {itemsApertura.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                          <Package className="w-6 h-6" />
+                        </div>
+                        <h4 className="text-sm font-semibold text-slate-800 mb-1">
+                          No hay productos en la lista de apertura inicial
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto mb-4">
+                          Puedes pre-cargar las 31 filas independientes del catálogo con 0 cajas o agregar productos individuales con una fila vacía.
+                        </p>
+                        <div className="flex items-center justify-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setItemsApertura(PRODUCTS.map(p => ({ productId: p.id, cajas: 0 })));
+                            }}
+                            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition-colors flex items-center space-x-1.5"
+                          >
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Pre-cargar los 31 productos con 0 cajas</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setItemsApertura([{ productId: '', cajas: 0 }]);
+                            }}
+                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold text-xs transition-colors flex items-center space-x-1.5"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Agregar una fila vacía</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 z-10 shadow-xs">
+                          <tr>
+                            <th className="py-2.5 px-3 w-10 text-center text-slate-400">#</th>
+                            <th className="py-2.5 px-3">Producto JOLY</th>
+                            <th className="py-2.5 px-3 w-44">Categoría</th>
+                            <th className="py-2.5 px-3 w-32 text-right">Cajas Contadas</th>
+                            <th className="py-2.5 px-3 w-16 text-center">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {itemsApertura.map((it, idx) => {
+                            const prod = it.productId ? PRODUCTS.find(p => p.id === it.productId) : null;
+                            const esFilaVacia = !it.productId;
+
+                            return (
+                              <tr key={it.productId || `empty-${idx}`} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-2.5 px-3 text-center text-xs font-medium text-slate-400">
+                                  {idx + 1}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  {esFilaVacia ? (
+                                    <div className="space-y-1">
+                                      <select
+                                        value=""
+                                        onChange={(e) => {
+                                          const nuevoId = e.target.value;
+                                          if (nuevoId) {
+                                            setItemsApertura(prev => prev.map((item, i) => i === idx ? { ...item, productId: nuevoId } : item));
+                                          }
+                                        }}
+                                        className="w-full text-xs px-2.5 py-1.5 bg-amber-50/60 border-2 border-amber-300 focus:border-slate-800 rounded-lg text-slate-800 font-medium focus:outline-none"
+                                        autoFocus
+                                      >
+                                        <option value="">
+                                          -- Seleccionar producto ({productosDisponiblesApertura.length} disponibles) --
+                                        </option>
+                                        {productosDisponiblesApertura.map(p => (
+                                          <option key={p.id} value={p.id}>
+                                            {p.name} — {p.categoryName} ({p.unitsPerBox} un/cj)
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <div className="text-[11px] text-amber-700">
+                                        Selecciona un producto del catálogo para esta fila
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="font-semibold text-slate-900 text-xs md:text-sm">
+                                          {prod?.name || it.productId}
+                                        </div>
+                                        <div className="text-[11px] text-slate-400">
+                                          SKU: <span className="font-mono text-slate-500">{prod?.id}</span> · {prod?.unitsPerBox || 1} un/caja
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setItemsApertura(prev => prev.map((item, i) => i === idx ? { ...item, productId: '' } : item));
+                                        }}
+                                        className="text-[10px] text-slate-400 hover:text-slate-700 underline px-1.5 py-0.5 rounded hover:bg-slate-100"
+                                        title="Cambiar este producto por otro disponible"
+                                      >
+                                        Cambiar
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  {prod ? (
+                                    <span className="inline-block text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded font-medium">
+                                      {prod.categoryName}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 italic">—</span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={it.cajas === 0 ? '0' : it.cajas}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                                      setItemsApertura(prev => prev.map((item, i) => i === idx ? { ...item, cajas: val } : item));
+                                    }}
+                                    className="w-24 px-2.5 py-1 text-xs border border-slate-300 focus:border-slate-800 rounded-lg text-right font-bold text-slate-900 bg-white focus:outline-none focus:ring-1 focus:ring-slate-800"
+                                  />
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setItemsApertura(prev => prev.filter((_, i) => i !== idx))}
+                                    className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+                                    title="Quitar esta fila"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot className="sticky bottom-0 bg-slate-50 border-t border-slate-200 text-xs font-semibold text-slate-700">
+                          <tr>
+                            <td colSpan={3} className="py-2.5 px-3">
+                              Total Cajas Físicas en Bodega Central ({itemsApertura.filter(it => it.productId && it.cajas > 0).length} productos con stock ingresado)
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold text-slate-900 text-sm">
+                              {itemsApertura.reduce((s, it) => s + (it.cajas || 0), 0)} cj
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                     <button
                       type="button"
+                      disabled={productosDisponiblesApertura.length === 0}
                       onClick={() => {
-                        setItemsApertura(PRODUCTS.map(p => ({ productId: p.id, cajas: 0 })));
+                        const hayFilaVacia = itemsApertura.some(it => !it.productId);
+                        if (hayFilaVacia) {
+                          alert('Ya tienes una fila vacía esperando selección de producto. Por favor elígelo antes de agregar otra fila.');
+                          return;
+                        }
+                        if (productosDisponiblesApertura.length === 0) {
+                          alert('Ya se han agregado los 31 productos del catálogo vigente.');
+                          return;
+                        }
+                        setItemsApertura(prev => [...prev, { productId: '', cajas: 0 }]);
                       }}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold"
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center space-x-1.5 ${
+                        productosDisponiblesApertura.length === 0
+                          ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
+                          : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 shadow-xs'
+                      }`}
                     >
-                      Pre-cargar los 31 productos con 0 cajas
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>
+                        {productosDisponiblesApertura.length === 0
+                          ? 'Catálogo completo (31 de 31 en lista)'
+                          : `Agregar otra fila de producto (${productosDisponiblesApertura.length} restantes)`}
+                      </span>
                     </button>
-                  </div>
 
-                  <div className="border border-slate-200 rounded-xl max-h-80 overflow-y-auto">
-                    <table className="w-full text-left border-collapse text-sm">
-                      <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
-                        <tr>
-                          <th className="py-2.5 px-3">Producto JOLY</th>
-                          <th className="py-2.5 px-3">Categoría</th>
-                          <th className="py-2.5 px-3 text-right">Cajas Contadas</th>
-                          <th className="py-2.5 px-3 text-center">Acción</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {itemsApertura.map((it, idx) => {
-                          const prod = PRODUCTS.find(p => p.id === it.productId);
-                          return (
-                            <tr key={idx} className="hover:bg-slate-50/50">
-                              <td className="py-2 px-3">
-                                <select
-                                  value={it.productId}
-                                  onChange={(e) => {
-                                    const nuevoId = e.target.value;
-                                    setItemsApertura(prev => prev.map((item, i) => i === idx ? { ...item, productId: nuevoId } : item));
-                                  }}
-                                  className="w-full text-xs px-2 py-1 bg-white border border-slate-200 rounded"
-                                >
-                                  {PRODUCTS.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td className="py-2 px-3 text-xs text-slate-500">
-                                {prod?.categoryName}
-                              </td>
-                              <td className="py-2 px-3 text-right">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={it.cajas}
-                                  onChange={(e) => {
-                                    const val = Math.max(0, parseInt(e.target.value) || 0);
-                                    setItemsApertura(prev => prev.map((item, i) => i === idx ? { ...item, cajas: val } : item));
-                                  }}
-                                  className="w-24 px-2 py-1 text-xs border border-slate-300 rounded text-right font-bold text-slate-900 bg-white"
-                                />
-                              </td>
-                              <td className="py-2 px-3 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => setItemsApertura(prev => prev.filter((_, i) => i !== idx))}
-                                  className="text-slate-400 hover:text-rose-600 p-1"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="text-xs text-slate-500 font-medium">
+                      Total a registrar:{' '}
+                      <strong className="text-slate-900">
+                        {itemsApertura.reduce((s, it) => s + (it.cajas || 0), 0)} cajas
+                      </strong>
+                    </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const disponible = PRODUCTS.find(p => !itemsApertura.some(it => it.productId === p.id));
-                      if (disponible) {
-                        setItemsApertura(prev => [...prev, { productId: disponible.id, cajas: 0 }]);
-                      }
-                    }}
-                    className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center space-x-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Agregar otra fila de producto</span>
-                  </button>
                 </div>
 
                 <div className="pt-2">
