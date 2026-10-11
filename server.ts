@@ -171,9 +171,11 @@ async function startServer() {
       const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
       const cleanMime = mimeType || (base64Data.startsWith('data:application/pdf') ? 'application/pdf' : 'image/jpeg');
 
+      console.log(`[Invoice OCR Input] Archivo: ${fileName}, MIME: ${cleanMime}, Base64: ${cleanBase64.length} caracteres`);
+
       const prompt = `Eres un extractor experto de facturas y guías de recepción de fábrica de helados y alimentos en Chile.
-Analiza con máxima rigurosidad y precisión este documento de factura o guía adjunto.
-Extrae los datos y devuélvelos EXCLUSIVAMENTE en formato JSON plano y válido (sin bloques markdown \`\`\` ni texto explicativo antes o después):
+Analiza con máxima rigurosidad y precisión este documento adjunto (factura o guía de despacho).
+Extrae TODOS los datos y líneas de producto sin omitir ninguna fila. Devuélvelos EXCLUSIVAMENTE en formato JSON plano y válido:
 {
   "numeroFactura": "string con el folio o número de factura / guía (ej: FAC-98402 o 12345)",
   "proveedor": "string con la razón social o nombre comercial del proveedor emisor",
@@ -183,17 +185,17 @@ Extrae los datos y devuélvelos EXCLUSIVAMENTE en formato JSON plano y válido (
     {
       "codigoProveedor": "string con código de artículo, SKU o código de barras si figura",
       "descripcion": "string con el nombre o descripción literal del producto en la factura",
-      "cantidadCajas": 10, // número entero con la cantidad de cajas, bultos o unidades facturadas
+      "cantidadCajas": 10, // número entero con la cantidad de cajas facturadas en esa línea
       "precioUnitario": 0 // precio unitario neto si está visible, o 0
     }
   ]
 }
 
 Reglas críticas:
-1. Extrae cada fila de producto facturado con su descripción exacta y cantidad de cajas.
-2. Si la descripción menciona paletas o cassatas, conserva los nombres y sabores tal como aparecen.
+1. Extrae CADA fila de producto facturado (incluyendo productos descontinuados o antiguos si figuran en el documento).
+2. Conserva los nombres tal como aparecen en el documento (ej: "Paleta Mora Mora", "Cassata Frambuesa 1L", etc.).
 3. No inventes productos ni cajas que no figuren en el documento.
-4. Devuelve solo el objeto JSON puro para que pueda parsearse con JSON.parse.`;
+4. Devuelve únicamente el objeto JSON sin bloques de código ni texto adicional.`;
 
       const ai = new GoogleGenAI();
       const modelsToTry = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-2.5-pro'];
@@ -241,6 +243,7 @@ Reglas críticas:
       }
 
       const parsedData = JSON.parse(jsonStr);
+      console.log(`[Invoice OCR Resultado] Factura: ${parsedData.numeroFactura}, Proveedor: ${parsedData.proveedor}, Líneas extraídas: ${parsedData.items?.length || 0}`);
 
       return res.json({
         success: true,

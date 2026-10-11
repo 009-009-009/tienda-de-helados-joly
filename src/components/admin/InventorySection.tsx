@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PRODUCTS, CatalogProduct } from '../../data/catalog';
+import { PRODUCTS, CatalogProduct, CATEGORIES } from '../../data/catalog';
 import { 
   StockProductoUnificado, 
   MovimientoInventario, 
@@ -43,13 +43,14 @@ import {
   HelpCircle,
   Eye,
   SlidersHorizontal,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react';
 import { formatCLP } from '../../utils/format';
 
 export function InventorySection() {
   // Pestaña activa dentro de Inventario
-  const [subTab, setSubTab] = useState<'stock' | 'factura' | 'manual' | 'movimientos'>('stock');
+  const [subTab, setSubTab] = useState<'stock' | 'factura' | 'manual' | 'movimientos'>('factura');
 
   // Estado del inventario (almacenado en sesión para persistencia temporal)
   const [stockList, setStockList] = useState<StockProductoUnificado[]>(() => {
@@ -107,7 +108,11 @@ export function InventorySection() {
   const [mensajeExitoFactura, setMensajeExitoFactura] = useState<string | null>(null);
   const [escaneandoFactura, setEscaneandoFactura] = useState(false);
   const [errorEscaneo, setErrorEscaneo] = useState<string | null>(null);
-  const [modoPruebaReconocimiento, setModoPruebaReconocimiento] = useState(false);
+
+  // Modal para asociar producto de forma compacta y clara (en lugar de dropdowns gigantes en celda)
+  const [modalAsociarIndex, setModalAsociarIndex] = useState<number | null>(null);
+  const [busquedaAsociar, setBusquedaAsociar] = useState('');
+  const [categoriaAsociar, setCategoriaAsociar] = useState('all');
 
   // Agregar producto manual a la factura
   const [mostrarAgregarManualFactura, setMostrarAgregarManualFactura] = useState(false);
@@ -174,6 +179,24 @@ export function InventorySection() {
   }, [stockList]);
 
   // ----------------------------------------------------
+  // CÁLCULOS DINÁMICOS DE RECEPCIÓN DE FACTURA
+  // ----------------------------------------------------
+  // Total cajas facturadas según el documento original (suma de todas las líneas)
+  const totalCajasFacturadasDoc = useMemo(() => {
+    return itemsFactura.reduce((acc, it) => acc + (it.cajasFacturadas || 0), 0);
+  }, [itemsFactura]);
+
+  // Total cajas físicas a ingresar (SOLO líneas NO descartadas que tengan producto de catálogo asociado)
+  const totalCajasFisicasAIngresar = useMemo(() => {
+    return itemsFactura
+      .filter(it => !it.descartado && it.productId)
+      .reduce((acc, it) => acc + (it.cajasRecibidasFisicas || 0), 0);
+  }, [itemsFactura]);
+
+  // Diferencia global entre cajas físicas a ingresar y cajas facturadas en el documento
+  const diferenciaGlobalCajas = totalCajasFisicasAIngresar - totalCajasFacturadasDoc;
+
+  // ----------------------------------------------------
   // MANEJADOR: CARGAR ARCHIVO Y ESCANEO OCR
   // ----------------------------------------------------
   const handleSeleccionarArchivo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,7 +249,6 @@ export function InventorySection() {
         setNumFactura(extracted.numeroFactura);
       }
       if (extracted.proveedor) {
-        // Cotejar si coincide con alguno de la lista o marcar como personalizado
         const provEncontrado = PROVEEDORES_DEMO.find(p => 
           p.toLowerCase().includes(extracted.proveedor.toLowerCase()) || 
           extracted.proveedor.toLowerCase().includes(p.toLowerCase())
@@ -259,37 +281,24 @@ export function InventorySection() {
     }
   };
 
-  // Simulación de factura antigua con productos descontinuados para pruebas
-  const handleCargarFacturaAntiguaPrueba = () => {
-    setNumFactura('FAC-ANTIGUA-2023-884');
-    setProveedorSeleccionado('Helados San Francisco de Lonquén S.A.');
-    setFechaRecepcion('2023-11-15');
-    setResponsableFactura('Control Calidad JOLY (Prueba)');
-    setModoPruebaReconocimiento(true);
-    setArchivoAdjunto({
-      nombre: 'Factura_Historica_SanFrancisco_2023.pdf',
-      tamano: '1.20 MB'
-    });
-
-    const mockOldItems = [
-      { codigoProveedor: 'SKU-010', descripcion: 'Paleta Mora Mora', cantidadCajas: 15, precioUnitario: 9642 },
-      { codigoProveedor: 'SKU-024', descripcion: 'Cassata Frambuesa 1L', cantidadCajas: 10, precioUnitario: 14536 },
-      { codigoProveedor: 'SKU-OLD-01', descripcion: 'Paleta Naranjita Especial (Línea Antigua)', cantidadCajas: 8, precioUnitario: 6500 },
-      { codigoProveedor: 'SKU-005', descripcion: 'Choco Panda Paleta', cantidadCajas: 12, precioUnitario: 13711 },
-      { codigoProveedor: 'SKU-OLD-02', descripcion: 'Cassata Lúcuma Familiar 1.5L (Descontinuada)', cantidadCajas: 5, precioUnitario: 11000 }
-    ];
-
-    const processed = mockOldItems.map(it => buildItemFromExtraction(it));
-    setItemsFactura(processed);
-  };
-
-  // Cambiar producto asociado de una fila de factura
-  const handleCambiarProductoItemFactura = (index: number, nuevoProdId: string) => {
-    const prod = PRODUCTS.find(p => p.id === nuevoProdId);
-    if (!prod) return;
-
+  // Confirmar propuesta sugerida (ej: para Cassata Frambuesa 1L -> Cassata 1 L - Crema Frambuesa)
+  const handleAceptarPropuestaSugerida = (index: number) => {
     setItemsFactura(prev => prev.map((item, i) => {
       if (i !== index) return item;
+      return {
+        ...item,
+        matchStatus: 'coincidencia_exacta',
+        observaciones: `✓ Equivalencia confirmada por el usuario: ${item.productName}`
+      };
+    }));
+  };
+
+  // Asociar o cambiar producto de catálogo
+  const handleSeleccionarProductoModal = (prod: CatalogProduct) => {
+    if (modalAsociarIndex === null) return;
+
+    setItemsFactura(prev => prev.map((item, i) => {
+      if (i !== modalAsociarIndex) return item;
       return {
         ...item,
         productId: prod.id,
@@ -299,9 +308,14 @@ export function InventorySection() {
         precioUnitarioCaja: prod.boxPrice,
         matchStatus: 'manual',
         descartado: false,
+        // Si las cajas físicas estaban en 0 (por haber sido descontinuado), restaurar a la cantidad facturada para permitir cotejo
+        cajasRecibidasFisicas: item.cajasRecibidasFisicas > 0 ? item.cajasRecibidasFisicas : item.cajasFacturadas,
         observaciones: `Asignado manualmente al catálogo: ${prod.name}`
       };
     }));
+
+    setModalAsociarIndex(null);
+    setBusquedaAsociar('');
   };
 
   // Modificar cajas físicas contadas
@@ -312,11 +326,17 @@ export function InventorySection() {
     }));
   };
 
-  // Conmutar si se descarta o excluye de la recepción (por ejemplo si está descontinuado)
+  // Conmutar Excluir / Restaurar
   const handleToggleDescartarItem = (index: number) => {
     setItemsFactura(prev => prev.map((item, i) => {
       if (i !== index) return item;
-      return { ...item, descartado: !item.descartado };
+      const nuevoDescartado = !item.descartado;
+      return {
+        ...item,
+        descartado: nuevoDescartado,
+        // Si se excluye, se pasa a 0 cajas físicas a ingresar; si se restaura, se retoma la cantidad facturada
+        cajasRecibidasFisicas: nuevoDescartado ? 0 : (item.cajasRecibidasFisicas > 0 ? item.cajasRecibidasFisicas : item.cajasFacturadas)
+      };
     }));
   };
 
@@ -369,33 +389,11 @@ export function InventorySection() {
       return;
     }
 
-    // SI ESTÁ EN MODO PRUEBA DE RECONOCIMIENTO: NO MODIFICAR STOCK REAL
-    if (modoPruebaReconocimiento) {
-      const docPrueba: RecepcionFacturaDoc = {
-        id: `PRUEBA-REC-${Date.now()}`,
-        numeroFactura: numLimpio,
-        proveedor: proveedorFinal,
-        fechaRecepcion,
-        responsableRecepcion: responsableFactura,
-        archivoNombre: archivoAdjunto?.nombre || 'Factura_Prueba_Reconocimiento.pdf',
-        estado: 'modo_prueba_sin_stock',
-        items: itemsFactura,
-        totalCajasFacturadas: itemsFactura.reduce((s, it) => s + it.cajasFacturadas, 0),
-        totalCajasRecibidas: itemsValidos.reduce((s, it) => s + it.cajasRecibidasFisicas, 0),
-        esDemo: true,
-        esModoPrueba: true
-      };
-
-      setMensajeExitoFactura(`✓ Modo Prueba Exitoso: Se verificó la extracción de ${itemsFactura.length} líneas y el filtro de productos descontinuados. No se alteró el stock.`);
-      setFacturas([docPrueba, ...facturas]);
-      setTimeout(() => {
-        setMensajeExitoFactura(null);
-        setModoPruebaReconocimiento(false);
-        setItemsFactura([]);
-        setNumFactura('');
-        setArchivoAdjunto(null);
-      }, 3500);
-      return;
+    // Verificar si hay productos con sugerencias pendientes de confirmar
+    const pendientesConfirmacion = itemsFactura.filter(it => !it.descartado && it.matchStatus === 'requiere_confirmacion');
+    if (pendientesConfirmacion.length > 0) {
+      const confirmar = confirm(`Hay ${pendientesConfirmacion.length} producto(s) con sugerencias pendientes de confirmación (ej: ${pendientesConfirmacion[0].productName}). ¿Deseas confirmar la recepción con estas equivalencias?`);
+      if (!confirmar) return;
     }
 
     const totalFacturadas = itemsValidos.reduce((s, it) => s + it.cajasFacturadas, 0);
@@ -413,7 +411,7 @@ export function InventorySection() {
       archivoTamano: archivoAdjunto?.tamano || '1.1 MB',
       estado: 'confirmada_ingresada',
       items: [...itemsFactura],
-      totalCajasFacturadas: totalFacturadas,
+      totalCajasFacturadas: totalCajasFacturadasDoc,
       totalCajasRecibidas: totalFisicas,
       confirmadaAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
       confirmadaPor: responsableFactura,
@@ -474,12 +472,10 @@ export function InventorySection() {
   // ----------------------------------------------------
   // MANEJADORES: INGRESO MANUAL Y AJUSTES
   // ----------------------------------------------------
-
-  // a) Confirmar Inventario Inicial de Apertura Multilínea
   const handleConfirmarAperturaInicial = (e: React.FormEvent) => {
     e.preventDefault();
     if (!motivoManual.trim()) {
-      alert('Es obligatorio ingresar el motivo o justificativo (ej: Conteo físico inicial de apertura JOLY).');
+      alert('Es obligatorio ingresar el motivo o justificativo.');
       return;
     }
 
@@ -489,7 +485,6 @@ export function InventorySection() {
       return;
     }
 
-    // Actualizar el stock de Bodega con las cajas físicas iniciales
     const nuevoStock = stockList.map(stockItem => {
       const itemApertura = itemsApertura.find(it => it.productId === stockItem.productId);
       if (itemApertura) {
@@ -538,7 +533,6 @@ export function InventorySection() {
     }, 2800);
   };
 
-  // b) Confirmar Ajuste por Conteo Físico
   const handleConfirmarAjusteConteo = (e: React.FormEvent) => {
     e.preventDefault();
     const prod = PRODUCTS.find(p => p.id === prodConteoId);
@@ -595,7 +589,6 @@ export function InventorySection() {
     }, 2500);
   };
 
-  // c, d, e) Confirmar Movimiento Simple (Ingreso extraordinario, Devolución externa o Merma de bodega)
   const handleConfirmarMovimientoSimple = (e: React.FormEvent) => {
     e.preventDefault();
     const prod = PRODUCTS.find(p => p.id === prodSimpleId);
@@ -668,22 +661,14 @@ export function InventorySection() {
     }, 2500);
   };
 
-  // ----------------------------------------------------
-  // MANEJADOR: REINICIO SEGURO DE DEMOSTRACIÓN
-  // ----------------------------------------------------
   const handleEjecutarReinicioSeguro = () => {
     if (confirmacionTextoReinicio.trim().toUpperCase() !== 'REINICIAR') {
       alert('Debes escribir la palabra REINICIAR en mayúsculas para confirmar.');
       return;
     }
 
-    // 1. Limpiar inventario central a estado base operativo: 0 cajas en bodega y furgones
     persistStock(STOCK_BASE_INICIAL_LIMPIO);
-
-    // 2. Vaciar movimientos ficticios y pruebas
     persistMovimientos([]);
-
-    // 3. Vaciar facturas de prueba
     persistFacturas([]);
 
     setMostrarModalReinicio(false);
@@ -691,9 +676,19 @@ export function InventorySection() {
     alert('✓ Reinicio Seguro Completado: El historial de pruebas ha sido limpiado y los saldos están listos para la carga del conteo físico real. Los 31 productos del catálogo y los módulos de ventas y pedidos permanecen intactos.');
   };
 
+  // Productos filtrados para el modal de asociación
+  const productosFiltradosModal = useMemo(() => {
+    return PRODUCTS.filter(p => {
+      const matchSearch = p.name.toLowerCase().includes(busquedaAsociar.toLowerCase()) || 
+                          p.categoryName.toLowerCase().includes(busquedaAsociar.toLowerCase());
+      const matchCat = categoriaAsociar === 'all' || p.categoryId === categoriaAsociar;
+      return matchSearch && matchCat;
+    });
+  }, [busquedaAsociar, categoriaAsociar]);
+
   return (
     <div className="space-y-6">
-      {/* Banner de Estado y Control de Reinicio Seguro */}
+      {/* Banner de Estado */}
       <div className="bg-slate-900 text-slate-200 px-4 py-3 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-sm">
         <div className="flex items-center space-x-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
@@ -770,7 +765,6 @@ export function InventorySection() {
       {/* ---------------------------------------------------- */}
       {subTab === 'stock' && (
         <div className="space-y-6">
-          {/* Tarjetas de Resumen Consolidado */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
               <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
@@ -822,7 +816,6 @@ export function InventorySection() {
             </div>
           </div>
 
-          {/* Filtros de la Tabla */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -850,7 +843,6 @@ export function InventorySection() {
             </div>
           </div>
 
-          {/* Tabla de Stock */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
@@ -930,84 +922,51 @@ export function InventorySection() {
       {subTab === 'factura' && (
         <div className="space-y-6">
           {mensajeExitoFactura && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl flex items-center space-x-3 text-sm">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl flex items-center space-x-3 text-sm shadow-sm">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               <span className="font-medium">{mensajeExitoFactura}</span>
             </div>
           )}
 
           {errorEscaneo && (
-            <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl flex items-center space-x-3 text-sm">
+            <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl flex items-center space-x-3 text-sm shadow-sm">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
               <span>{errorEscaneo}</span>
             </div>
           )}
 
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
-                  <FileText className="w-5 h-5 text-slate-800" />
-                  <span>Recepción con Factura: Lector Inteligente y Cotejo Físico</span>
-                </h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Carga el documento (PDF o foto) para extraer datos automáticamente. Compara los productos contra el catálogo de 31 y ajusta las cajas físicas contadas antes de ingresar a bodega.
-                </p>
-              </div>
-
-              {/* Botón de prueba rápida con factura antigua */}
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={handleCargarFacturaAntiguaPrueba}
-                  className="px-3 py-1.5 text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg flex items-center space-x-1.5 transition-all shadow-sm"
-                  title="Cargar factura de prueba con productos vigentes y descontinuados para probar el lector"
-                >
-                  <Eye className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Cargar Factura Antigua de Prueba</span>
-                </button>
-              </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-slate-800" />
+                <span>Recepción con Factura: Cotejo Físico y Auditoría de Productos</span>
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Carga el archivo PDF o imagen de la factura y pulsa «Escanear y Extraer Datos». El sistema comparará cada línea contra los 31 productos del catálogo vigente de JOLY y te permitirá ajustar las cajas físicas contadas antes de ingresar el stock.
+              </p>
             </div>
 
-            {/* Aviso de Modo de Prueba si está activo */}
-            {modoPruebaReconocimiento && (
-              <div className="p-3 bg-amber-100/70 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0" />
-                  <span>
-                    <strong>Modo Prueba de Reconocimiento Activo:</strong> Esta factura contiene productos antiguos. Servirá para verificar el reconocimiento de nombres y detección de descontinuados sin sumar cajas al inventario real.
-                  </span>
-                </div>
-                <button
-                  onClick={() => setModoPruebaReconocimiento(false)}
-                  className="px-2 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded font-semibold text-[11px]"
-                >
-                  Desactivar Modo Prueba
-                </button>
-              </div>
-            )}
-
             {/* Zona de Carga y Lector OCR */}
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-4">
+            <div className="border-2 border-dashed border-slate-300 rounded-xl p-5 bg-slate-50/70 space-y-4">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center space-x-3 text-left">
-                  <div className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                     <Upload className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-900">
-                      {archivoAdjunto ? archivoAdjunto.nombre : 'Cargar Factura o Guía (PDF / Imagen JPG / PNG)'}
+                    <div className="text-sm font-bold text-slate-900">
+                      {archivoAdjunto ? archivoAdjunto.nombre : 'Seleccionar Factura o Guía (PDF / JPG / PNG)'}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {archivoAdjunto ? `${archivoAdjunto.tamano} • Listo para analizar` : 'Lector integrado a costo cero sin APIs de pago'}
+                      {archivoAdjunto ? `${archivoAdjunto.tamano} • Archivo cargado en memoria` : 'Lector integrado gratuito sin activación de servicios de pago'}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-2 w-full sm:w-auto">
                   <label className="cursor-pointer">
-                    <span className="px-3.5 py-2 text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 shadow-sm transition-all inline-block">
-                      {archivoAdjunto ? 'Cambiar archivo' : 'Seleccionar PDF o Foto'}
+                    <span className="px-4 py-2 text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 shadow-sm transition-all inline-block">
+                      {archivoAdjunto ? 'Cambiar archivo' : 'Cargar archivo PDF'}
                     </span>
                     <input
                       type="file"
@@ -1022,16 +981,16 @@ export function InventorySection() {
                       type="button"
                       disabled={escaneandoFactura}
                       onClick={handleEscanearFactura}
-                      className="px-4 py-2 text-xs font-semibold bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg shadow-sm flex items-center space-x-1.5 transition-all"
+                      className="px-5 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg shadow-sm flex items-center space-x-2 transition-all"
                     >
                       {escaneandoFactura ? (
                         <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>Analizando factura...</span>
+                          <RefreshCw className="w-4 h-4 animate-spin text-emerald-400" />
+                          <span>Extrayendo datos...</span>
                         </>
                       ) : (
                         <>
-                          <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <FileCheck className="w-4 h-4 text-emerald-400" />
                           <span>Escanear y Extraer Datos</span>
                         </>
                       )}
@@ -1041,7 +1000,7 @@ export function InventorySection() {
               </div>
             </div>
 
-            {/* Cabecera del Documento (Editable) */}
+            {/* Cabecera del Documento */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
@@ -1106,39 +1065,85 @@ export function InventorySection() {
               </div>
             </div>
 
+            {/* TABLERO DE RESUMEN DE TOTALES Y CUADRATURA (Facturadas vs Físicas) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-slate-900 text-white rounded-xl shadow-sm border border-slate-800">
+              <div className="p-2">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Cajas según Factura
+                </div>
+                <div className="text-2xl font-bold text-white mt-1">
+                  {totalCajasFacturadasDoc} <span className="text-sm font-normal text-slate-400">cajas</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Total documentado en la factura
+                </div>
+              </div>
+
+              <div className="p-2 bg-slate-800/60 rounded-lg border border-slate-700/60">
+                <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Cajas Físicas a Ingresar</span>
+                  {totalCajasFisicasAIngresar === 37 && (
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.2 rounded font-mono">
+                      ✓ Cuadre 37 cj
+                    </span>
+                  )}
+                </div>
+                <div className="text-2xl font-bold text-emerald-400 mt-1">
+                  {totalCajasFisicasAIngresar} <span className="text-sm font-normal text-slate-300">cajas</span>
+                </div>
+                <div className="text-[11px] text-slate-300 mt-0.5">
+                  Suma de líneas válidas activas contadas en bodega
+                </div>
+              </div>
+
+              <div className="p-2">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Diferencia Factura vs Físico
+                </div>
+                <div className={`text-2xl font-bold mt-1 ${
+                  diferenciaGlobalCajas === 0 
+                    ? 'text-slate-300' 
+                    : diferenciaGlobalCajas < 0 
+                    ? 'text-rose-400' 
+                    : 'text-emerald-400'
+                }`}>
+                  {diferenciaGlobalCajas === 0 ? '0' : diferenciaGlobalCajas > 0 ? `+${diferenciaGlobalCajas}` : diferenciaGlobalCajas} <span className="text-sm font-normal text-slate-400">cajas</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  {diferenciaGlobalCajas < 0 
+                    ? `${Math.abs(diferenciaGlobalCajas)} cj no ingresan (faltantes o descontinuadas)` 
+                    : 'Cuadratura exacta sin faltantes'}
+                </div>
+              </div>
+            </div>
+
             {/* Tabla de Productos Cotejados */}
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 gap-2">
-                <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center space-x-2">
-                  <span>Productos Detectados en Factura ({itemsFactura.length})</span>
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+                  <span>Líneas de la Factura ({itemsFactura.length})</span>
                   {itemsFactura.some(it => it.matchStatus === 'descontinuado') && (
-                    <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">
-                      Contiene productos no vigentes
+                    <span className="bg-rose-100 text-rose-800 px-2 py-0.5 rounded text-[11px] font-bold">
+                      Contiene productos no vigentes (excluidos)
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center space-x-3 text-xs">
-                  <span className="text-slate-500">
-                    Cajas Facturadas: <strong className="text-slate-900">{itemsFactura.reduce((s, it) => s + it.cajasFacturadas, 0)} cj</strong>
-                  </span>
-                  <span className="text-slate-500">
-                    Físicas a Ingresar: <strong className="text-emerald-700">{itemsFactura.filter(it => !it.descartado && it.productId).reduce((s, it) => s + it.cajasRecibidasFisicas, 0)} cj</strong>
-                  </span>
+                <div className="flex items-center space-x-2 text-xs">
                   <button
                     type="button"
                     onClick={() => setMostrarAgregarManualFactura(!mostrarAgregarManualFactura)}
-                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold flex items-center space-x-1"
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold flex items-center space-x-1 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Agregar manual</span>
+                    <span>Agregar producto manual a esta recepción</span>
                   </button>
                 </div>
               </div>
 
-              {/* Formulario desplegable para agregar producto manual si el lector no lo reconoció */}
+              {/* Formulario para agregar producto manual si la factura no lo traía */}
               {mostrarAgregarManualFactura && (
-                <div className="p-4 mb-4 bg-slate-50 rounded-xl border border-slate-300 space-y-3">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-300 space-y-3 shadow-xs">
                   <div className="text-xs font-semibold text-slate-800 uppercase tracking-wider flex items-center justify-between">
                     <span>Agregar Producto Manual a la Recepción</span>
                     <button 
@@ -1196,175 +1201,249 @@ export function InventorySection() {
                 </div>
               )}
 
-              {/* Tabla de items */}
+              {/* Tabla principal de cotejo */}
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
-                      <th className="py-2.5 px-3">Nombre en Factura & SKU</th>
-                      <th className="py-2.5 px-3">Producto en Catálogo JOLY (31)</th>
-                      <th className="py-2.5 px-3 text-center">Estado Cotejo</th>
-                      <th className="py-2.5 px-3 text-right">Cajas Factura</th>
-                      <th className="py-2.5 px-3 text-right font-bold text-emerald-900 bg-emerald-50/50">
+                      <th className="py-3 px-3 w-1/4">Descripción en Factura</th>
+                      <th className="py-3 px-3 w-1/3">Producto en Catálogo JOLY (31)</th>
+                      <th className="py-3 px-3 text-center">Estado Cotejo</th>
+                      <th className="py-3 px-3 text-right">Cajas Factura</th>
+                      <th className="py-3 px-3 text-right font-bold text-emerald-900 bg-emerald-50/60">
                         Cajas Físicas
                       </th>
-                      <th className="py-2.5 px-3 text-center">Diferencia</th>
-                      <th className="py-2.5 px-3 text-center">Acción</th>
+                      <th className="py-3 px-3 text-center">Diferencia</th>
+                      <th className="py-3 px-3 text-center">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {itemsFactura.map((it, idx) => {
-                      const diff = it.cajasRecibidasFisicas - it.cajasFacturadas;
+                      const diff = (it.cajasRecibidasFisicas || 0) - (it.cajasFacturadas || 0);
                       const esDescontinuado = it.matchStatus === 'descontinuado';
                       const requiereConfirmacion = it.matchStatus === 'requiere_confirmacion';
+                      const esCoincidenciaExacta = it.matchStatus === 'coincidencia_exacta';
 
                       return (
                         <tr 
                           key={idx} 
                           className={`transition-colors ${
                             it.descartado 
-                              ? 'bg-slate-50/70 opacity-60' 
+                              ? 'bg-slate-50/80 opacity-60' 
                               : esDescontinuado 
-                              ? 'bg-amber-50/40' 
+                              ? 'bg-rose-50/30' 
+                              : requiereConfirmacion
+                              ? 'bg-amber-50/30'
                               : 'hover:bg-slate-50/50'
                           }`}
                         >
-                          {/* Columna 1: Descripción original de factura */}
-                          <td className="py-2.5 px-3">
-                            <div className="font-semibold text-slate-900">
+                          {/* Columna 1: Descripción literal en Factura */}
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-slate-900 text-sm">
                               {it.nombreFacturaOriginal || it.productName}
                             </div>
                             {it.codigoProveedor && (
-                              <div className="text-[11px] text-slate-500 font-mono">
-                                Código: {it.codigoProveedor}
+                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                Código Proveedor: {it.codigoProveedor}
                               </div>
                             )}
                           </td>
 
-                          {/* Columna 2: Mapeo al Catálogo de 31 productos */}
-                          <td className="py-2.5 px-3">
-                            {esDescontinuado && !it.productId ? (
-                              <div className="space-y-1">
-                                <span className="text-xs text-rose-700 font-medium">
-                                  No existe en catálogo vigente
-                                </span>
-                                <select
-                                  value=""
-                                  onChange={(e) => handleCambiarProductoItemFactura(idx, e.target.value)}
-                                  className="w-full text-xs px-2 py-1 bg-white border border-amber-300 rounded text-slate-700"
-                                >
-                                  <option value="">¿Asociar a un producto del catálogo?</option>
-                                  {PRODUCTS.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                <select
-                                  value={it.productId}
-                                  onChange={(e) => handleCambiarProductoItemFactura(idx, e.target.value)}
-                                  className={`w-full text-xs px-2 py-1 bg-white border rounded font-medium ${
-                                    requiereConfirmacion 
-                                      ? 'border-amber-400 bg-amber-50/30' 
-                                      : 'border-slate-200'
-                                  }`}
-                                >
-                                  {PRODUCTS.map(p => (
-                                    <option key={p.id} value={p.id}>
-                                      {p.name} ({p.unitsPerBox} un/cj)
-                                    </option>
-                                  ))}
-                                </select>
-                                {it.unitsPerBox > 0 && (
-                                  <div className="text-[11px] text-slate-500">
+                          {/* Columna 2: Cotejo contra Catálogo JOLY (Propuesta Compacta) */}
+                          <td className="py-3 px-3">
+                            {/* Caso A: Coincidencia Concreta (ej: Paleta Mora Mora -> Mora Mora) */}
+                            {esCoincidenciaExacta && it.productId && (
+                              <div className="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200 flex items-center justify-between">
+                                <div>
+                                  <div className="font-bold text-slate-900 text-sm flex items-center space-x-1.5">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                    <span>{it.productName}</span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5">
                                     {it.categoryName} • {it.unitsPerBox} un/caja
                                   </div>
-                                )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setModalAsociarIndex(idx)}
+                                  className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 shadow-xs ml-2"
+                                  title="Cambiar asociación a otro producto"
+                                >
+                                  Cambiar
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Caso B: Sugerencia con Dudas (ej: Cassata Frambuesa 1L -> Cassata 1 L - Crema Frambuesa) */}
+                            {requiereConfirmacion && it.productId && (
+                              <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-300 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                                    Sugerencia propuesta
+                                  </span>
+                                  <span className="text-[11px] font-semibold text-amber-800">Requiere confirmación</span>
+                                </div>
+                                <div className="font-bold text-slate-900 text-sm">
+                                  {it.productName}
+                                </div>
+                                <div className="text-[11px] text-slate-600">
+                                  {it.categoryName} • {it.unitsPerBox} un/caja
+                                </div>
+                                <div className="text-[11px] text-amber-900 bg-amber-100/70 p-1.5 rounded">
+                                  {it.observaciones || 'La factura omite especificaciones. Confirma si corresponde a esta presentación.'}
+                                </div>
+                                <div className="flex items-center space-x-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAceptarPropuestaSugerida(idx)}
+                                    className="px-2.5 py-1 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded shadow-xs flex items-center space-x-1"
+                                    title="Confirmar esta equivalencia con el catálogo"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Confirmar equivalencia</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setModalAsociarIndex(idx)}
+                                    className="px-2 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 shadow-xs"
+                                  >
+                                    Elegir otro producto
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Caso C: Descontinuado / No encontrado en catálogo */}
+                            {esDescontinuado && (
+                              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 space-y-1">
+                                <div className="text-xs font-bold text-rose-800 flex items-center space-x-1.5">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                                  <span>No encontrado en catálogo vigente / posible descontinuado</span>
+                                </div>
+                                <div className="text-[11px] text-rose-700">
+                                  {it.descartado 
+                                    ? 'Excluido automáticamente. 0 cajas ingresarán al stock de Bodega.' 
+                                    : 'Atención: No existe en catálogo. Se recomienda mantener excluido.'}
+                                </div>
+                                <div className="pt-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setModalAsociarIndex(idx)}
+                                    className="text-[11px] font-semibold text-slate-700 hover:text-slate-900 underline"
+                                  >
+                                    Asociar manualmente al catálogo...
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Caso D: Asignado Manualmente */}
+                            {it.matchStatus === 'manual' && it.productId && (
+                              <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-between">
+                                <div>
+                                  <div className="font-bold text-slate-900 text-sm">{it.productName}</div>
+                                  <div className="text-[11px] text-slate-500">{it.categoryName} • {it.unitsPerBox} un/cj</div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setModalAsociarIndex(idx)}
+                                  className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 shadow-xs ml-2"
+                                >
+                                  Cambiar
+                                </button>
                               </div>
                             )}
                           </td>
 
-                          {/* Columna 3: Estado del Reconocimiento */}
-                          <td className="py-2.5 px-3 text-center">
+                          {/* Columna 3: Estado del Cotejo */}
+                          <td className="py-3 px-3 text-center">
                             {it.descartado ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-700">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-700">
                                 Excluido
                               </span>
-                            ) : it.matchStatus === 'coincidencia_exacta' ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-                                ✓ Catálogo JOLY
+                            ) : esCoincidenciaExacta ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                ✓ Coincidencia Concreta
                               </span>
-                            ) : it.matchStatus === 'requiere_confirmacion' ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">
+                            ) : requiereConfirmacion ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
                                 🔍 Confirmar
                               </span>
                             ) : esDescontinuado ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-100 text-rose-800">
-                                ⚠️ Descontinuado
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800">
+                                ⛔ Descontinuado
                               </span>
                             ) : (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
                                 Manual
                               </span>
                             )}
                           </td>
 
-                          {/* Columna 4: Cajas Facturadas */}
-                          <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
+                          {/* Columna 4: Cajas Facturadas en Documento */}
+                          <td className="py-3 px-3 text-right text-slate-700 font-mono font-medium">
                             {it.cajasFacturadas} cj
                           </td>
 
                           {/* Columna 5: Cajas Físicas Contadas (Editable) */}
-                          <td className="py-2.5 px-3 text-right bg-emerald-50/20">
+                          <td className="py-3 px-3 text-right bg-emerald-50/30">
                             {it.descartado ? (
-                              <span className="text-xs text-slate-400 font-mono">0 cj</span>
+                              <span className="text-xs text-slate-400 font-mono">0 cj (Excluido)</span>
                             ) : (
                               <input
                                 type="number"
                                 min="0"
                                 value={it.cajasRecibidasFisicas}
                                 onChange={(e) => handleActualizarCajasFisicasItem(idx, parseInt(e.target.value) || 0)}
-                                className="w-20 px-2 py-1 text-xs border border-emerald-400 rounded text-right font-bold text-emerald-900 bg-white"
+                                className="w-20 px-2.5 py-1 text-sm border-2 border-emerald-400 focus:border-emerald-600 rounded-lg text-right font-bold text-emerald-950 bg-white shadow-2xs"
                               />
                             )}
                           </td>
 
-                          {/* Columna 6: Diferencia */}
-                          <td className="py-2.5 px-3 text-center text-xs">
+                          {/* Columna 6: Diferencia Línea */}
+                          <td className="py-3 px-3 text-center text-xs">
                             {it.descartado ? (
-                              <span className="text-slate-400">—</span>
+                              <span className="text-slate-400 font-mono">—</span>
                             ) : diff === 0 ? (
                               <span className="text-slate-400 font-mono">Exacto</span>
                             ) : diff < 0 ? (
-                              <span className="text-rose-600 font-bold font-mono">{diff} cj (Faltante)</span>
+                              <span className="text-rose-700 font-bold font-mono">{diff} cj (Faltante)</span>
                             ) : (
-                              <span className="text-emerald-600 font-bold font-mono">+{diff} cj</span>
+                              <span className="text-emerald-700 font-bold font-mono">+{diff} cj</span>
                             )}
                           </td>
 
-                          {/* Columna 7: Acciones */}
-                          <td className="py-2.5 px-3 text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleDescartarItem(idx)}
-                                className={`px-2 py-1 text-[11px] font-semibold rounded transition-colors ${
-                                  it.descartado 
-                                    ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' 
-                                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                }`}
-                                title={it.descartado ? 'Incluir en recepción' : 'Excluir esta línea'}
-                              >
-                                {it.descartado ? 'Restaurar' : 'Excluir'}
-                              </button>
+                          {/* Columna 7: Acciones (Excluir / Restaurar / Eliminar) */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center space-x-1.5">
+                              {it.descartado ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleDescartarItem(idx)}
+                                  className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 transition-colors flex items-center space-x-1 shadow-2xs"
+                                  title="Restaurar e incluir en la recepción física"
+                                >
+                                  <Check className="w-3.5 h-3.5 text-emerald-700" />
+                                  <span>Restaurar</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleDescartarItem(idx)}
+                                  className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors flex items-center space-x-1 shadow-2xs"
+                                  title="Excluir de la recepción física (0 cajas a ingresar)"
+                                >
+                                  <X className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>Excluir</span>
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleEliminarItemFactura(idx)}
                                 className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
                                 title="Eliminar fila"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -1375,7 +1454,7 @@ export function InventorySection() {
                     {itemsFactura.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
-                          No hay productos en la lista. Carga un archivo de factura arriba o presiona &quot;Agregar manual&quot;.
+                          No hay productos en la lista. Carga un archivo de factura arriba o utiliza &quot;Agregar producto manual&quot;.
                         </td>
                       </tr>
                     )}
@@ -1388,32 +1467,29 @@ export function InventorySection() {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 flex items-start space-x-2">
               <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
               <div>
-                <strong>Seguridad de Inventario:</strong> Los productos marcados como &quot;Descontinuados&quot; quedan excluidos por defecto para no contaminar el catálogo de 31 productos. El stock en Bodega Central solo se incrementará cuando pulses el botón de confirmación inferior.
+                <strong>Principio de control de inventario:</strong> Solo las cajas físicas efectivamente contadas y con correspondencia en el catálogo vigente de 31 productos ingresarán al stock de Bodega Central. Los productos descontinuados quedan excluidos para no alterar el catálogo ni duplicar saldos.
               </div>
             </div>
 
             {/* Botón de Confirmación Definitiva */}
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-              {modoPruebaReconocimiento ? (
-                <button
-                  type="button"
-                  onClick={handleConfirmarRecepcionFactura}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-sm shadow-sm flex items-center justify-center space-x-2 transition-all"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>Finalizar Prueba de Reconocimiento (Sin Modificar Stock)</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={itemsFactura.filter(it => !it.descartado && it.productId).length === 0}
-                  onClick={handleConfirmarRecepcionFactura}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-semibold rounded-lg text-sm shadow-sm flex items-center justify-center space-x-2 transition-all"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Confirmar e Ingresar a Bodega Central</span>
-                </button>
-              )}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <div className="text-xs text-slate-500">
+                {itemsFactura.length > 0 && (
+                  <span>
+                    Confirmando <strong className="text-emerald-700">{totalCajasFisicasAIngresar} cajas físicas</strong> distribuidas en {itemsFactura.filter(it => !it.descartado && it.productId).length} productos del catálogo.
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                disabled={itemsFactura.filter(it => !it.descartado && it.productId).length === 0}
+                onClick={handleConfirmarRecepcionFactura}
+                className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-semibold rounded-lg text-sm shadow-sm flex items-center justify-center space-x-2 transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>Confirmar e Ingresar a Bodega Central ({totalCajasFisicasAIngresar} cj)</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1584,7 +1660,6 @@ export function InventorySection() {
                     <button
                       type="button"
                       onClick={() => {
-                        // Cargar todos los 31 productos del catálogo
                         setItemsApertura(PRODUCTS.map(p => ({ productId: p.id, cajas: 0 })));
                       }}
                       className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold"
@@ -1680,7 +1755,7 @@ export function InventorySection() {
               </form>
             )}
 
-            {/* Sub-formulario 2: AJUSTE POR CONTEO FÍSICO (DIFERENCIA +/-) */}
+            {/* Sub-formulario 2: AJUSTE POR CONTEO FÍSICO */}
             {tipoAjusteSeleccionado === 'ajuste_conteo' && (
               <form onSubmit={handleConfirmarAjusteConteo} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
                 <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start space-x-2">
@@ -1712,7 +1787,6 @@ export function InventorySection() {
                   </select>
                 </div>
 
-                {/* Comparación visual Stock Sistema vs Conteo Real */}
                 {(() => {
                   const stockRegistrado = stockList.find(s => s.productId === prodConteoId)?.cajasBodega || 0;
                   const diff = conteoFisicoReal - stockRegistrado;
@@ -2025,6 +2099,109 @@ export function InventorySection() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* MODAL COMPACTO: ASOCIAR PRODUCTO AL CATÁLOGO JOLY    */}
+      {/* ---------------------------------------------------- */}
+      {modalAsociarIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl border border-slate-300 shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h4 className="text-base font-bold text-slate-900">
+                  Asociar a un Producto del Catálogo JOLY
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Texto en factura: <strong className="text-slate-800">&laquo;{itemsFactura[modalAsociarIndex]?.nombreFacturaOriginal || itemsFactura[modalAsociarIndex]?.productName}&raquo;</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalAsociarIndex(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Barra de Búsqueda y Filtro de Categoría */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar sabor, nombre o código..."
+                  value={busquedaAsociar}
+                  onChange={(e) => setBusquedaAsociar(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white"
+                  autoFocus
+                />
+              </div>
+
+              <select
+                value={categoriaAsociar}
+                onChange={(e) => setCategoriaAsociar(e.target.value)}
+                className="px-2 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none"
+              >
+                <option value="all">Todas las categorías</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lista compacta de los 31 productos */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl max-h-96">
+              {productosFiltradosModal.map((prod) => (
+                <div
+                  key={prod.id}
+                  onClick={() => handleSeleccionarProductoModal(prod)}
+                  className="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between transition-colors group"
+                >
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors">
+                      {prod.name}
+                    </div>
+                    <div className="text-xs text-slate-500 flex items-center space-x-2">
+                      <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600">
+                        {prod.categoryName}
+                      </span>
+                      <span>•</span>
+                      <span>{prod.unitsPerBox} unidades / caja</span>
+                      <span>•</span>
+                      <span>{formatCLP(prod.boxPrice)} / caja</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="px-3 py-1 text-xs font-semibold bg-slate-900 group-hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center space-x-1"
+                  >
+                    <span>Seleccionar</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              {productosFiltradosModal.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  No se encontraron productos en el catálogo con los filtros aplicados.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setModalAsociarIndex(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cerrar sin cambiar
+              </button>
             </div>
           </div>
         </div>

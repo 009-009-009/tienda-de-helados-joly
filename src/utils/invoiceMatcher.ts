@@ -12,40 +12,178 @@ export function normalizeString(str: string): string {
     .trim();
 }
 
-// Mapa de alias y sinónimos comunes de proveedores hacia los IDs de los 31 productos JOLY
-const KNOWN_ALIASES: Record<string, string[]> = {
-  'cas-1l-crema-frambuesa': ['cassata 1 l crema frambuesa', 'cassata 1l crema frambuesa', 'cassata frambuesa 1l', 'cassata crema frambuesa', 'crema frambuesa 1l', 'frambuesa 1 litro'],
-  'cas-1l-frutos-del-bosque': ['cassata 1 l frutos del bosque', 'cassata 1l frutos del bosque', 'frutos del bosque 1l', 'frutos bosque 1l', 'cassata frutos bosque'],
-  'cas-1l-chirimoya-alegre': ['cassata 1 l chirimoya alegre', 'cassata 1l chirimoya alegre', 'chirimoya alegre 1l', 'cassata chirimoya 1l', 'chirimoya alegre 1 litro'],
-  'cas-1l-pina': ['cassata 1 l pina', 'cassata 1l pina', 'cassata pina 1l', 'cassata 1l pina', 'pina 1 litro'],
-  'cas-1l-tradicional': ['cassata 1 l tradicional', 'cassata 1l tradicional', 'tradicional 1l', 'cassata tradicional 1l'],
-  'cas-1l-trisabor': ['cassata 1 l trisabor', 'cassata 1l trisabor', 'trisabor 1l', 'cassata trisabor 1l'],
-  'cas-18l-choco-menta-3leches': ['cassata 1 8 l chocolate menta chips 3 leches', 'cassata 1 8l chocolate menta', 'choco menta 3 leches', 'menta chips 1 8l', 'cassata menta 1 8', 'tres leches menta 1 8l'],
-  'cas-18l-cassata': ['cassata 1 8 l cassata', 'cassata 1 8l cassata', 'cassata 1 8l tradicional', 'cassata familiar 1 8'],
-  'cas-18l-trisabor': ['cassata 1 8 l trisabor', 'cassata 1 8l trisabor', 'trisabor 1 8l', 'trisabor 1 8 litro'],
-  'cas-18l-pina': ['cassata 1 8 l pina', 'cassata 1 8l pina', 'pina 1 8l', 'cassata pina 1 8 litro'],
-  'ind-lyn-naranja': ['lyn naranja', 'paleta lyn naranja', 'helado lyn naranja', 'lyn naranja agua'],
-  'ind-lyn-frutilla': ['lyn frutilla', 'paleta lyn frutilla', 'helado lyn frutilla', 'lyn frutilla agua'],
-  'ind-yiro-papaya-frambuesa': ['yiro papaya frambuesa', 'yiro papaya', 'paleta yiro papaya frambuesa', 'yiro papaya y frambuesa'],
-  'ind-yiro-uva-berries': ['yiro uva berries', 'yiro uva', 'paleta yiro uva berries', 'yiro berries'],
-  'ind-yiro-limon-manzana': ['yiro limon manzana', 'yiro limon', 'paleta yiro limon manzana', 'yiro manzana limon'],
-  'ind-2-palos-frambuesa': ['2 palos frambuesa', 'dos palos frambuesa', '2 palos', 'dos palos', 'paleta 2 palos', 'paleta dos palos frambuesa'],
-  'ind-colo-colo-pina': ['colo colo pina', 'colo colo', 'paleta colo colo', 'paleta colo colo pina', 'helado colo colo'],
-  'ind-u-de-chile-pina': ['u de chile pina', 'u de chile', 'universidad de chile pina', 'paleta u de chile', 'helado u de chile'],
-  'postre-manjar-crocante': ['manjar crocante', 'postre manjar crocante', 'paleta manjar crocante', 'crocante manjar'],
-  'postre-choco-panda': ['choco panda', 'paleta choco panda', 'postre choco panda', 'panda chocolate'],
-  'postre-crema-frambuesa': ['crema frambuesa', 'paleta crema frambuesa', 'postre crema frambuesa', 'paleta frambuesa crema'],
-  'postre-chirimoya-alegre': ['chirimoya alegre', 'paleta chirimoya alegre', 'postre chirimoya alegre', 'paleta chirimoya'],
-  'postre-mora-mora': ['mora mora', 'paleta mora mora', 'postre mora mora', 'helado mora mora', 'paleta mora'],
-  'postre-paleta-crema': ['paleta crema', 'postre paleta crema', 'paleta de crema', 'helado paleta crema'],
-  'postre-paleta-cassatta': ['paleta cassatta', 'paleta cassata', 'postre paleta cassatta', 'paleta tipo cassata'],
-  'postre-paleta-tunga': ['paleta tunga', 'tunga', 'postre paleta tunga', 'tunga frambuesa', 'paleta tunga frambuesa'],
-  'chocante-tres-leches': ['chocante tres leches', 'chocante 3 leches', 'bombon chocante tres leches', 'bombon chocante 3 leches'],
-  'chocante-frambuesa': ['chocante frambuesa', 'bombon chocante frambuesa', 'paleta chocante frambuesa'],
-  'chocante-macchiato': ['chocante macchiato', 'bombon chocante macchiato', 'chocante moca', 'chocante cafe'],
-  'cono-crema-frambuesa': ['cono crema frambuesa', 'cono crema y frambuesa', 'cono frambuesa'],
-  'copa-crema-frambuesa': ['copa crema frambuesa', 'copa crema y frambuesa', 'copa frambuesa']
+// 1. Alias de Coincidencia Concreta / Exacta (identidad 100% indudable del producto)
+const EXACT_ALIASES: Record<string, string[]> = {
+  'postre-mora-mora': [
+    'mora mora',
+    'paleta mora mora',
+    'postre mora mora',
+    'helado mora mora',
+    'paleta mora'
+  ],
+  'postre-choco-panda': [
+    'choco panda',
+    'paleta choco panda',
+    'postre choco panda',
+    'panda chocolate'
+  ],
+  'postre-manjar-crocante': [
+    'manjar crocante',
+    'postre manjar crocante',
+    'paleta manjar crocante',
+    'crocante manjar'
+  ],
+  'postre-paleta-tunga': [
+    'paleta tunga',
+    'tunga',
+    'postre paleta tunga',
+    'tunga frambuesa',
+    'paleta tunga frambuesa'
+  ],
+  'postre-paleta-cassatta': [
+    'paleta cassatta',
+    'paleta cassata',
+    'postre paleta cassatta'
+  ],
+  'postre-paleta-crema': [
+    'paleta crema',
+    'postre paleta crema',
+    'helado paleta crema'
+  ],
+  'ind-2-palos-frambuesa': [
+    '2 palos frambuesa',
+    'dos palos frambuesa',
+    '2 palos',
+    'dos palos',
+    'paleta 2 palos',
+    'paleta dos palos'
+  ],
+  'ind-colo-colo-pina': [
+    'colo colo pina',
+    'colo colo',
+    'paleta colo colo',
+    'helado colo colo'
+  ],
+  'ind-u-de-chile-pina': [
+    'u de chile pina',
+    'u de chile',
+    'universidad de chile pina',
+    'paleta u de chile',
+    'helado u de chile'
+  ],
+  'ind-lyn-naranja': [
+    'lyn naranja',
+    'paleta lyn naranja',
+    'helado lyn naranja'
+  ],
+  'ind-lyn-frutilla': [
+    'lyn frutilla',
+    'paleta lyn frutilla',
+    'helado lyn frutilla'
+  ],
+  'ind-yiro-papaya-frambuesa': [
+    'yiro papaya frambuesa',
+    'yiro papaya',
+    'paleta yiro papaya frambuesa'
+  ],
+  'ind-yiro-uva-berries': [
+    'yiro uva berries',
+    'yiro uva',
+    'paleta yiro uva berries'
+  ],
+  'ind-yiro-limon-manzana': [
+    'yiro limon manzana',
+    'yiro limon',
+    'paleta yiro limon manzana'
+  ],
+  'cas-1l-tradicional': [
+    'cassata 1 l tradicional',
+    'cassata 1l tradicional',
+    'cassata tradicional 1l'
+  ],
+  'cas-1l-trisabor': [
+    'cassata 1 l trisabor',
+    'cassata 1l trisabor',
+    'cassata trisabor 1l'
+  ],
+  'cas-1l-pina': [
+    'cassata 1 l pina',
+    'cassata 1l pina',
+    'cassata pina 1l'
+  ],
+  'cas-1l-frutos-del-bosque': [
+    'cassata 1 l frutos del bosque',
+    'cassata 1l frutos del bosque',
+    'cassata frutos del bosque 1l',
+    'frutos del bosque 1l'
+  ],
+  'cas-18l-cassata': [
+    'cassata 1 8 l cassata',
+    'cassata 1 8l cassata',
+    'cassata 1 8l tradicional'
+  ],
+  'cas-18l-trisabor': [
+    'cassata 1 8 l trisabor',
+    'cassata 1 8l trisabor',
+    'cassata trisabor 1 8l'
+  ],
+  'cas-18l-pina': [
+    'cassata 1 8 l pina',
+    'cassata 1 8l pina',
+    'cassata pina 1 8l'
+  ],
+  'chocante-tres-leches': [
+    'chocante tres leches',
+    'chocante 3 leches',
+    'bombon chocante tres leches'
+  ],
+  'chocante-frambuesa': [
+    'chocante frambuesa',
+    'bombon chocante frambuesa'
+  ],
+  'chocante-macchiato': [
+    'chocante macchiato',
+    'bombon chocante macchiato'
+  ],
+  'cono-crema-frambuesa': [
+    'cono crema frambuesa',
+    'cono frambuesa'
+  ],
+  'copa-crema-frambuesa': [
+    'copa crema frambuesa',
+    'copa frambuesa'
+  ]
 };
+
+// 2. Propuestas con dudas / equivalencias que requieren confirmación humana
+// Ej: "Cassata Frambuesa 1L" omite la palabra "Crema", por lo que se propone
+// "Cassata 1 L - Crema Frambuesa" pero solicitando confirmación explícita al usuario.
+const PROPOSALS_REQUIRING_CONFIRMATION: {
+  triggers: string[];
+  targetProductId: string;
+  reason: string;
+}[] = [
+  {
+    triggers: ['cassata frambuesa 1l', 'cassata 1l frambuesa', 'cassata frambuesa 1 l', 'cassata frambuesa', 'frambuesa 1l'],
+    targetProductId: 'cas-1l-crema-frambuesa',
+    reason: 'La factura indica "Cassata Frambuesa 1L". El catálogo registra "Cassata 1 L - Crema Frambuesa". Confirmar equivalencia.'
+  },
+  {
+    triggers: ['cassata chirimoya 1l', 'cassata 1l chirimoya', 'chirimoya 1l'],
+    targetProductId: 'cas-1l-chirimoya-alegre',
+    reason: 'La factura indica "Cassata Chirimoya". El catálogo registra "Cassata 1 L - Chirimoya Alegre". Confirmar equivalencia.'
+  },
+  {
+    triggers: ['cassata menta 1 8l', 'choco menta 1 8l', 'menta chips 1 8l'],
+    targetProductId: 'cas-18l-choco-menta-3leches',
+    reason: 'La factura indica "Cassata Menta / Choco Menta". El catálogo registra "Cassata 1,8 L - Chocolate/Menta Chips/3 Leches". Confirmar equivalencia.'
+  },
+  {
+    triggers: ['crema frambuesa', 'paleta crema frambuesa'],
+    targetProductId: 'postre-crema-frambuesa',
+    reason: 'La factura indica "Crema Frambuesa". Confirmar si corresponde a Paleta "Crema Frambuesa" o formato Cassata.'
+  }
+];
 
 export interface MatchResult {
   catalogProduct: CatalogProduct | null;
@@ -55,11 +193,11 @@ export interface MatchResult {
 }
 
 /**
- * Compara una descripción extraída de factura contra el catálogo vigente de 31 productos de JOLY.
- * Distingue:
- * 1. 'coincidencia_exacta': coincidencia clara por nombre, formato o alias reconocido.
- * 2. 'requiere_confirmacion': posible coincidencia pero con cierta ambigüedad (ej: "Frambuesa" que podría ser Cassata, Paleta, Cono o Copa).
- * 3. 'descontinuado': el producto no existe en el catálogo vigente de 31 productos (ej: productos de facturas antiguas).
+ * Compara una descripción de factura contra el catálogo de 31 productos de JOLY.
+ * Cumple estrictamente las reglas del usuario:
+ * - «Paleta Mora Mora» -> Proponer coincidencia concreta: Mora Mora (postre-mora-mora)
+ * - «Cassata Frambuesa 1L» -> Proponer «Cassata 1 L - Crema Frambuesa» pero con estado 'requiere_confirmacion'
+ * - Productos antiguos (ej: Paleta Naranjita, Cassata Lúcuma) -> Identificados como 'descontinuado' (sin asociar a otro producto)
  */
 export function matchProductWithCatalog(invoiceDesc: string, providerCode?: string): MatchResult {
   const normInvoice = normalizeString(invoiceDesc);
@@ -73,8 +211,27 @@ export function matchProductWithCatalog(invoiceDesc: string, providerCode?: stri
     };
   }
 
-  // 1. Búsqueda exacta en alias conocidos
-  for (const [prodId, aliases] of Object.entries(KNOWN_ALIASES)) {
+  // 1. Verificación directa contra propuestas con dudas que requieren confirmación
+  // ("Cassata Frambuesa 1L" debe solicitar confirmación para "Cassata 1 L - Crema Frambuesa")
+  for (const proposal of PROPOSALS_REQUIRING_CONFIRMATION) {
+    for (const trigger of proposal.triggers) {
+      const normTrigger = normalizeString(trigger);
+      if (normInvoice === normTrigger || normInvoice.includes(normTrigger)) {
+        const prod = PRODUCTS.find(p => p.id === proposal.targetProductId);
+        if (prod) {
+          return {
+            catalogProduct: prod,
+            matchStatus: 'requiere_confirmacion',
+            confidence: 0.85,
+            reason: proposal.reason
+          };
+        }
+      }
+    }
+  }
+
+  // 2. Verificación contra alias exactos / identidad concreta (ej: "Paleta Mora Mora" -> "Mora Mora")
+  for (const [prodId, aliases] of Object.entries(EXACT_ALIASES)) {
     for (const alias of aliases) {
       const normAlias = normalizeString(alias);
       if (normInvoice === normAlias || normInvoice.includes(normAlias)) {
@@ -83,15 +240,15 @@ export function matchProductWithCatalog(invoiceDesc: string, providerCode?: stri
           return {
             catalogProduct: prod,
             matchStatus: 'coincidencia_exacta',
-            confidence: 0.95,
-            reason: `Coincidencia por alias reconocido: "${alias}"`
+            confidence: 1.0,
+            reason: `Coincidencia concreta con catálogo JOLY: "${prod.name}"`
           };
         }
       }
     }
   }
 
-  // 2. Búsqueda directa por nombre normalizado de producto en catálogo
+  // 3. Verificación por nombre completo idéntico en el catálogo de 31
   for (const prod of PRODUCTS) {
     const normName = normalizeString(prod.name);
     if (normInvoice === normName) {
@@ -99,14 +256,28 @@ export function matchProductWithCatalog(invoiceDesc: string, providerCode?: stri
         catalogProduct: prod,
         matchStatus: 'coincidencia_exacta',
         confidence: 1.0,
-        reason: 'Nombre idéntico al catálogo JOLY'
+        reason: `Nombre idéntico al catálogo JOLY: "${prod.name}"`
       };
     }
   }
 
-  // 3. Puntuación por coincidencia de palabras clave ponderadas (excluyendo palabras genéricas)
-  const STOP_WORDS = new Set(['paleta', 'paletas', 'helado', 'helados', 'caja', 'cajas', 'unidad', 'unidades', 'de', 'del', 'los', 'las', 'por', 'con', 'formato', 'postre', 'postres', 'chile']);
+  // 4. Búsqueda por similitud de palabras clave significativas (sin stop words)
+  const STOP_WORDS = new Set([
+    'paleta', 'paletas', 'helado', 'helados', 'caja', 'cajas', 'unidad', 'unidades', 
+    'de', 'del', 'los', 'las', 'por', 'con', 'formato', 'postre', 'postres', 'chile', 
+    'sku', 'art', 'articulo', 'codigo'
+  ]);
   const invoiceTokens = normInvoice.split(' ').filter(t => t.length > 2 && !STOP_WORDS.has(t));
+
+  if (invoiceTokens.length === 0) {
+    return {
+      catalogProduct: null,
+      matchStatus: 'descontinuado',
+      confidence: 0,
+      reason: 'No encontrado en catálogo vigente / posible descontinuado'
+    };
+  }
+
   let bestScore = 0;
   let bestCandidate: CatalogProduct | null = null;
   let matchReason = '';
@@ -122,41 +293,42 @@ export function matchProductWithCatalog(invoiceDesc: string, providerCode?: stri
       }
     }
 
-    // Comprobar formato explícito (cassata 1l vs 1.8l vs paleta vs cono vs copa)
+    // Penalización severa si confunde formatos
     const mentions1L = normInvoice.includes('1 l') || normInvoice.includes('1l') || normInvoice.includes('1 litro');
     const mentions18L = normInvoice.includes('1 8') || normInvoice.includes('1 8l') || normInvoice.includes('1 8 l') || normInvoice.includes('familiar');
     const isProd1L = prod.categoryId === 'cassatas-1l';
     const isProd18L = prod.categoryId === 'cassatas-1-8l';
 
     let penalty = 0;
-    if (mentions1L && isProd18L) penalty = 0.5;
-    if (mentions18L && isProd1L) penalty = 0.5;
+    if (mentions1L && !isProd1L) penalty = 0.6;
+    if (mentions18L && !isProd18L) penalty = 0.6;
 
     const score = Math.max(0, (matchCount / Math.max(prodTokens.length, invoiceTokens.length)) - penalty);
 
     if (score > bestScore) {
       bestScore = score;
       bestCandidate = prod;
-      matchReason = `Coincidencia parcial con ${prod.name} (${matchCount} términos clave)`;
+      matchReason = `Sugerencia con dudas: ${prod.name} (${matchCount} términos coincidentes). Requiere confirmación humana.`;
     }
   }
 
-  // Evaluación de umbrales
-  if (bestScore >= 0.70 && bestCandidate) {
+  // Si la coincidencia es alta (>= 0.75) y no cayó en reglas anteriores
+  if (bestScore >= 0.75 && bestCandidate) {
     return {
       catalogProduct: bestCandidate,
       matchStatus: 'coincidencia_exacta',
       confidence: bestScore,
-      reason: matchReason
+      reason: `Coincidencia concreta con: ${bestCandidate.name}`
     };
-  } else if (bestScore >= 0.40 && bestCandidate) {
+  } else if (bestScore >= 0.50 && bestCandidate) {
     return {
       catalogProduct: bestCandidate,
       matchStatus: 'requiere_confirmacion',
       confidence: bestScore,
-      reason: `Sugerencia con dudas: ${bestCandidate.name}. Requiere confirmación humana.`
+      reason: matchReason
     };
   } else {
+    // Si no alcanza un puntaje convincente, es un producto antiguo o no perteneciente al catálogo
     return {
       catalogProduct: null,
       matchStatus: 'descontinuado',
@@ -167,7 +339,7 @@ export function matchProductWithCatalog(invoiceDesc: string, providerCode?: stri
 }
 
 /**
- * Transforma una fila detectada por el OCR en un ItemRecepcionFactura seguro
+ * Transforma una fila detectada en un ItemRecepcionFactura seguro
  */
 export function buildItemFromExtraction(extractedItem: {
   codigoProveedor?: string;
@@ -177,23 +349,21 @@ export function buildItemFromExtraction(extractedItem: {
 }): ItemRecepcionFactura {
   const match = matchProductWithCatalog(extractedItem.descripcion, extractedItem.codigoProveedor);
   const prod = match.catalogProduct;
+  const esDescontinuado = match.matchStatus === 'descontinuado';
 
   return {
     productId: prod ? prod.id : '',
     productName: prod ? prod.name : extractedItem.descripcion,
-    categoryName: prod ? prod.categoryName : 'Sin categoría vigente',
+    categoryName: prod ? prod.categoryName : 'No encontrado en catálogo vigente',
     unitsPerBox: prod ? prod.unitsPerBox : 0,
     cajasFacturadas: Number(extractedItem.cantidadCajas) || 0,
-    cajasRecibidasFisicas: Number(extractedItem.cantidadCajas) || 0, // Inicialmente igual a facturadas para que el bodeguero ajuste
+    // Si está descontinuado, 0 cajas físicas a ingresar por defecto; si es válido, igual a facturadas para cotejo
+    cajasRecibidasFisicas: esDescontinuado ? 0 : (Number(extractedItem.cantidadCajas) || 0),
     precioUnitarioCaja: prod ? prod.boxPrice : (extractedItem.precioUnitario || 0),
     codigoProveedor: extractedItem.codigoProveedor,
     nombreFacturaOriginal: extractedItem.descripcion,
     matchStatus: match.matchStatus,
-    descartado: match.matchStatus === 'descontinuado', // Marcar descartado por defecto si no existe en catálogo
-    observaciones: match.matchStatus === 'descontinuado'
-      ? '⚠️ Producto no encontrado en catálogo vigente (posible descontinuado). Excluido de recepción.'
-      : match.matchStatus === 'requiere_confirmacion'
-      ? '🔍 Verificado con dudas. Confirmar sabor y formato antes de ingresar.'
-      : undefined
+    descartado: esDescontinuado, // Excluido por defecto si es descontinuado
+    observaciones: match.reason
   };
 }
