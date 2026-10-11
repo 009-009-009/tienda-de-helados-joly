@@ -211,10 +211,15 @@ export function InventorySection() {
         nombre: file.name,
         tamano: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
         base64: base64Data,
-        mimeType: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
+        mimeType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
       });
     };
+    reader.onerror = (err) => {
+      console.error('Error al leer archivo en navegador:', err);
+      setErrorEscaneo('Error al leer el archivo en memoria. Inténtalo nuevamente.');
+    };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleEscanearFactura = async () => {
@@ -225,6 +230,7 @@ export function InventorySection() {
 
     setEscaneandoFactura(true);
     setErrorEscaneo(null);
+    console.log('[Lector UI] Iniciando escaneo de:', archivoAdjunto.nombre, archivoAdjunto.tamano);
 
     try {
       const res = await fetch('/api/parse-invoice', {
@@ -237,12 +243,18 @@ export function InventorySection() {
         })
       });
 
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Error del servidor (${res.status}): ${errorText.slice(0, 120)}`);
+      }
+
       const json = await res.json();
-      if (!res.ok || !json.success) {
+      if (!json.success || !json.data) {
         throw new Error(json.error || 'No fue posible interpretar la factura');
       }
 
       const extracted = json.data;
+      console.log('[Lector UI] Datos recibidos del servidor:', extracted);
 
       // Autocompletar datos de cabecera si vienen en el documento
       if (extracted.numeroFactura) {
@@ -270,11 +282,12 @@ export function InventorySection() {
           buildItemFromExtraction(it)
         );
         setItemsFactura(processedItems);
+        setErrorEscaneo(null);
       } else {
         setErrorEscaneo('El lector no detectó líneas de productos claras. Puedes agregar los productos manualmente con el botón inferior.');
       }
     } catch (err: any) {
-      console.error('Error al escanear factura:', err);
+      console.error('[Lector UI Error]', err);
       setErrorEscaneo(`Aviso de lectura: ${err.message || 'No se pudo interpretar el archivo'}. Recuerda que puedes usar el ingreso manual directo.`);
     } finally {
       setEscaneandoFactura(false);
