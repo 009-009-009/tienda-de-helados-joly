@@ -52,47 +52,63 @@ export function InventorySection() {
   // Pestaña activa dentro de Inventario
   const [subTab, setSubTab] = useState<'stock' | 'factura' | 'manual' | 'movimientos'>('factura');
 
-  // Estado del inventario (almacenado en sesión para persistencia temporal)
+  // Estado del inventario (inicia en 0 cajas en todas las ubicaciones para la nueva ronda de pruebas)
   const [stockList, setStockList] = useState<StockProductoUnificado[]>(() => {
-    const saved = sessionStorage.getItem('joly_admin_stock_demo');
+    // Limpiar claves heredadas con saldos de prueba ficticios (1.316 cajas)
+    try {
+      sessionStorage.removeItem('joly_admin_stock_demo');
+      sessionStorage.removeItem('joly_admin_movimientos_demo');
+      sessionStorage.removeItem('joly_admin_facturas_demo');
+    } catch (e) {}
+
+    const saved = sessionStorage.getItem('joly_admin_stock_limpio');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) { /* ignore */ }
     }
-    return INITIAL_STOCK_DEMO;
+    return STOCK_BASE_INICIAL_LIMPIO;
   });
 
-  // Historial de movimientos unificado
+  // Historial de movimientos unificado (vacío para nueva ronda de pruebas)
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>(() => {
-    const saved = sessionStorage.getItem('joly_admin_movimientos_demo');
+    const saved = sessionStorage.getItem('joly_admin_movimientos_limpio');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter((m: any) => !m.esDemo);
+      } catch (e) { /* ignore */ }
     }
-    return MOVIMIENTOS_INICIALES_DEMO;
+    return [];
   });
 
-  // Facturas registradas
+  // Facturas registradas (vacío para nueva ronda de pruebas)
   const [facturas, setFacturas] = useState<RecepcionFacturaDoc[]>(() => {
-    const saved = sessionStorage.getItem('joly_admin_facturas_demo');
+    const saved = sessionStorage.getItem('joly_admin_facturas_limpio');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter((f: any) => !f.esDemo);
+      } catch (e) { /* ignore */ }
     }
-    return FACTURAS_DEMO;
+    return [];
   });
 
   // Guardar en sessionStorage para persistencia
   const persistStock = (newStock: StockProductoUnificado[]) => {
     setStockList(newStock);
-    sessionStorage.setItem('joly_admin_stock_demo', JSON.stringify(newStock));
+    sessionStorage.setItem('joly_admin_stock_limpio', JSON.stringify(newStock));
   };
 
   const persistMovimientos = (newMovs: MovimientoInventario[]) => {
     setMovimientos(newMovs);
-    sessionStorage.setItem('joly_admin_movimientos_demo', JSON.stringify(newMovs));
+    sessionStorage.setItem('joly_admin_movimientos_limpio', JSON.stringify(newMovs));
   };
 
   const persistFacturas = (newFacts: RecepcionFacturaDoc[]) => {
     setFacturas(newFacts);
-    sessionStorage.setItem('joly_admin_facturas_demo', JSON.stringify(newFacts));
+    sessionStorage.setItem('joly_admin_facturas_limpio', JSON.stringify(newFacts));
   };
 
   // ----------------------------------------------------
@@ -680,13 +696,19 @@ export function InventorySection() {
       return;
     }
 
+    try {
+      sessionStorage.removeItem('joly_admin_stock_demo');
+      sessionStorage.removeItem('joly_admin_movimientos_demo');
+      sessionStorage.removeItem('joly_admin_facturas_demo');
+    } catch (e) {}
+
     persistStock(STOCK_BASE_INICIAL_LIMPIO);
     persistMovimientos([]);
     persistFacturas([]);
 
     setMostrarModalReinicio(false);
     setConfirmacionTextoReinicio('');
-    alert('✓ Reinicio Seguro Completado: El historial de pruebas ha sido limpiado y los saldos están listos para la carga del conteo físico real. Los 31 productos del catálogo y los módulos de ventas y pedidos permanecen intactos.');
+    alert('✓ Reinicio Seguro Completado: Los saldos han quedado en 0 cajas en Bodega Central, Furgón 1 y Furgón 2 (Total empresa: 0 cajas). El historial de pruebas previas fue vaciado. Los 31 productos del catálogo, clientes, ventas y pedidos permanecen intactos.');
   };
 
   // Productos filtrados para el modal de asociación
