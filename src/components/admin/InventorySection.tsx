@@ -132,9 +132,9 @@ export function InventorySection() {
 
   // Agregar producto manual a la factura
   const [mostrarAgregarManualFactura, setMostrarAgregarManualFactura] = useState(false);
-  const [prodManualFacturaId, setProdManualFacturaId] = useState(PRODUCTS[0]?.id || '');
-  const [cajasFacturadasManualFactura, setCajasFacturadasManualFactura] = useState(10);
-  const [cajasFisicasManualFactura, setCajasFisicasManualFactura] = useState(10);
+  const [prodManualFacturaId, setProdManualFacturaId] = useState<string>('');
+  const [cajasFacturadasManualFactura, setCajasFacturadasManualFactura] = useState<number | ''>('');
+  const [cajasFisicasManualFactura, setCajasFisicasManualFactura] = useState<number | ''>('');
   const [obsManualFactura, setObsManualFactura] = useState('');
 
   // ----------------------------------------------------
@@ -165,8 +165,8 @@ export function InventorySection() {
   const [conteoFisicoReal, setConteoFisicoReal] = useState<number | ''>('');
 
   // Sub-estado: Ingreso extraordinario, Devolución o Merma
-  const [prodSimpleId, setProdSimpleId] = useState(PRODUCTS[0]?.id || '');
-  const [cajasSimple, setCajasSimple] = useState<number>(5);
+  const [prodSimpleId, setProdSimpleId] = useState<string>('');
+  const [cajasSimple, setCajasSimple] = useState<number | ''>('');
 
   // ----------------------------------------------------
   // MODAL DE REINICIO SEGURO
@@ -384,8 +384,22 @@ export function InventorySection() {
 
   // Agregar producto manual a la factura
   const handleAgregarManualAFactura = () => {
+    if (!prodManualFacturaId) {
+      alert('Debes seleccionar un producto del catálogo JOLY.');
+      return;
+    }
     const prod = PRODUCTS.find(p => p.id === prodManualFacturaId);
     if (!prod) return;
+
+    if (cajasFacturadasManualFactura === '' || typeof cajasFacturadasManualFactura !== 'number' || cajasFacturadasManualFactura <= 0) {
+      alert('Debes ingresar la cantidad de cajas según factura (mínimo 1).');
+      return;
+    }
+
+    if (cajasFisicasManualFactura === '' || typeof cajasFisicasManualFactura !== 'number' || cajasFisicasManualFactura < 0) {
+      alert('Debes ingresar la cantidad de cajas físicas contadas.');
+      return;
+    }
 
     const nuevoItem: ItemRecepcionFactura = {
       productId: prod.id,
@@ -402,6 +416,9 @@ export function InventorySection() {
 
     setItemsFactura(prev => [...prev, nuevoItem]);
     setMostrarAgregarManualFactura(false);
+    setProdManualFacturaId('');
+    setCajasFacturadasManualFactura('');
+    setCajasFisicasManualFactura('');
     setObsManualFactura('');
   };
 
@@ -671,15 +688,23 @@ export function InventorySection() {
 
   const handleConfirmarMovimientoSimple = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!prodSimpleId) {
+      alert('Debes seleccionar un producto del catálogo JOLY.');
+      return;
+    }
     const prod = PRODUCTS.find(p => p.id === prodSimpleId);
     if (!prod) return;
 
-    if (cajasSimple <= 0) {
+    if (cajasSimple === '' || typeof cajasSimple !== 'number' || cajasSimple <= 0) {
       alert('Ingresa una cantidad de cajas mayor a 0.');
       return;
     }
     if (!motivoManual.trim()) {
       alert('El motivo o justificación es obligatorio.');
+      return;
+    }
+    if (!responsableManual.trim()) {
+      alert('El responsable del movimiento es obligatorio.');
       return;
     }
 
@@ -733,8 +758,9 @@ export function InventorySection() {
     persistMovimientos([nuevoMov, ...movimientos]);
 
     setMensajeExitoManual(`Movimiento registrado: ${deltaCajas > 0 ? '+' : ''}${deltaCajas} cj de ${prod.name}.`);
+    setProdSimpleId('');
+    setCajasSimple('');
     setMotivoManual('');
-    setCajasSimple(5);
     setTimeout(() => {
       setMensajeExitoManual(null);
       setSubTab('stock');
@@ -1218,7 +1244,15 @@ export function InventorySection() {
                 <div className="flex items-center space-x-2 text-xs">
                   <button
                     type="button"
-                    onClick={() => setMostrarAgregarManualFactura(!mostrarAgregarManualFactura)}
+                    onClick={() => {
+                      if (!mostrarAgregarManualFactura) {
+                        setProdManualFacturaId('');
+                        setCajasFacturadasManualFactura('');
+                        setCajasFisicasManualFactura('');
+                        setObsManualFactura('');
+                      }
+                      setMostrarAgregarManualFactura(!mostrarAgregarManualFactura);
+                    }}
                     className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold flex items-center space-x-1 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -1241,12 +1275,19 @@ export function InventorySection() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                     <div className="md:col-span-5">
-                      <label className="block text-xs text-slate-500 mb-1">Producto del Catálogo JOLY</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Producto del Catálogo JOLY</label>
                       <select
                         value={prodManualFacturaId}
-                        onChange={(e) => setProdManualFacturaId(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg"
+                        onChange={(e) => {
+                          setProdManualFacturaId(e.target.value);
+                          if (!e.target.value) {
+                            setCajasFacturadasManualFactura('');
+                            setCajasFisicasManualFactura('');
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
                       >
+                        <option value="">-- Selecciona un producto a agregar --</option>
                         {PRODUCTS.map(p => (
                           <option key={p.id} value={p.id}>
                             {p.name} ({p.categoryName} - {p.unitsPerBox} un/cj)
@@ -1255,13 +1296,23 @@ export function InventorySection() {
                       </select>
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-xs text-slate-500 mb-1">Cajas s/ Factura</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cajas s/ Factura</label>
                       <input
                         type="number"
                         min="1"
+                        disabled={!prodManualFacturaId}
+                        placeholder={prodManualFacturaId ? "Ej: 10" : "Elige producto"}
                         value={cajasFacturadasManualFactura}
-                        onChange={(e) => setCajasFacturadasManualFactura(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-right font-medium"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') setCajasFacturadasManualFactura('');
+                          else setCajasFacturadasManualFactura(Math.max(1, parseInt(val, 10) || 1));
+                        }}
+                        className={`w-full px-3 py-2 text-sm border rounded-lg text-right font-medium ${
+                          prodManualFacturaId
+                            ? 'bg-white border-slate-300 text-slate-900'
+                            : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                        }`}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -1269,18 +1320,37 @@ export function InventorySection() {
                       <input
                         type="number"
                         min="0"
+                        disabled={!prodManualFacturaId}
+                        placeholder={prodManualFacturaId ? "Ej: 10" : "Elige producto"}
                         value={cajasFisicasManualFactura}
-                        onChange={(e) => setCajasFisicasManualFactura(Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full px-3 py-2 text-sm bg-white border border-emerald-400 rounded-lg text-right font-bold text-emerald-900"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') setCajasFisicasManualFactura('');
+                          else setCajasFisicasManualFactura(Math.max(0, parseInt(val, 10) || 0));
+                        }}
+                        className={`w-full px-3 py-2 text-sm border rounded-lg text-right font-bold ${
+                          prodManualFacturaId
+                            ? 'bg-white border-emerald-400 text-emerald-950'
+                            : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                        }`}
                       />
                     </div>
                     <div className="md:col-span-3">
                       <button
                         type="button"
+                        disabled={!prodManualFacturaId || cajasFacturadasManualFactura === '' || cajasFisicasManualFactura === ''}
                         onClick={handleAgregarManualAFactura}
-                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm"
+                        className={`w-full py-2 text-sm font-semibold rounded-lg shadow-sm transition-all ${
+                          prodManualFacturaId && cajasFacturadasManualFactura !== '' && cajasFisicasManualFactura !== ''
+                            ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                        }`}
                       >
-                        Agregar a la lista
+                        {!prodManualFacturaId
+                          ? 'Selecciona producto'
+                          : cajasFacturadasManualFactura === '' || cajasFisicasManualFactura === ''
+                          ? 'Ingresa cajas'
+                          : 'Agregar a la lista'}
                       </button>
                     </div>
                   </div>
@@ -1644,7 +1714,12 @@ export function InventorySection() {
 
               <button
                 type="button"
-                onClick={() => setTipoAjusteSeleccionado('ingreso_extraordinario')}
+                onClick={() => {
+                  setTipoAjusteSeleccionado('ingreso_extraordinario');
+                  setProdSimpleId('');
+                  setCajasSimple('');
+                  setMotivoManual('');
+                }}
                 className={`p-3 text-left rounded-xl border transition-all ${
                   tipoAjusteSeleccionado === 'ingreso_extraordinario'
                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
@@ -1661,7 +1736,12 @@ export function InventorySection() {
 
               <button
                 type="button"
-                onClick={() => setTipoAjusteSeleccionado('devolucion_externa')}
+                onClick={() => {
+                  setTipoAjusteSeleccionado('devolucion_externa');
+                  setProdSimpleId('');
+                  setCajasSimple('');
+                  setMotivoManual('');
+                }}
                 className={`p-3 text-left rounded-xl border transition-all ${
                   tipoAjusteSeleccionado === 'devolucion_externa'
                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
@@ -1678,7 +1758,12 @@ export function InventorySection() {
 
               <button
                 type="button"
-                onClick={() => setTipoAjusteSeleccionado('merma_bodega')}
+                onClick={() => {
+                  setTipoAjusteSeleccionado('merma_bodega');
+                  setProdSimpleId('');
+                  setCajasSimple('');
+                  setMotivoManual('');
+                }}
                 className={`p-3 text-left rounded-xl border transition-all ${
                   tipoAjusteSeleccionado === 'merma_bodega'
                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
@@ -2216,121 +2301,165 @@ export function InventorySection() {
             {/* Sub-formulario 3, 4 y 5: INGRESOS EXTRAORDINARIOS, DEVOLUCIONES Y MERMAS */}
             {(tipoAjusteSeleccionado === 'ingreso_extraordinario' || 
               tipoAjusteSeleccionado === 'devolucion_externa' || 
-              tipoAjusteSeleccionado === 'merma_bodega') && (
-              <form onSubmit={handleConfirmarMovimientoSimple} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
-                {tipoAjusteSeleccionado === 'devolucion_externa' && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start space-x-2">
-                    <Info className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong>Coordinación con Cierre de Ruta:</strong> El cierre de ruta del vendedor ya reintegra automáticamente las cajas sobrantes a Bodega Central. Usa esta opción únicamente para devoluciones manuales que no hayan pasado por el cierre de ruta, evitando duplicar el conteo.
+              tipoAjusteSeleccionado === 'merma_bodega') && (() => {
+              const productoSeleccionado = PRODUCTS.find(p => p.id === prodSimpleId);
+              const tieneProducto = Boolean(productoSeleccionado);
+              const stockBodega = tieneProducto
+                ? (stockList.find(s => s.productId === prodSimpleId)?.cajasBodega || 0)
+                : 0;
+
+              return (
+                <form onSubmit={handleConfirmarMovimientoSimple} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
+                  {tipoAjusteSeleccionado === 'devolucion_externa' && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start space-x-2">
+                      <Info className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Coordinación con Cierre de Ruta:</strong> El cierre de ruta del vendedor ya reintegra automáticamente las cajas sobrantes a Bodega Central. Usa esta opción únicamente para devoluciones manuales que no hayan pasado por el cierre de ruta, evitando duplicar el conteo.
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {tipoAjusteSeleccionado === 'merma_bodega' && (
-                  <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-900 flex items-start space-x-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong>Exclusividad de Bodega Central:</strong> Las mermas registradas por los vendedores durante sus rutas ya se descuentan en el cierre de furgón. Esta opción descuenta exclusivamente pérdidas o daños ocurridos dentro de las cámaras de bodega.
+                  {tipoAjusteSeleccionado === 'merma_bodega' && (
+                    <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-900 flex items-start space-x-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Exclusividad de Bodega Central:</strong> Las mermas registradas por los vendedores durante sus rutas ya se descuentan en el cierre de furgón. Esta opción descuenta exclusivamente pérdidas o daños ocurridos dentro de las cámaras de bodega.
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {tipoAjusteSeleccionado === 'ingreso_extraordinario' && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 flex items-start space-x-2">
-                    <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong>Ingreso Extraordinario:</strong> Para ingresos legítimos que no provienen de una factura de compra habitual (ej: bonificaciones de proveedor, muestras recuperadas).
+                  {tipoAjusteSeleccionado === 'ingreso_extraordinario' && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 flex items-start space-x-2">
+                      <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Ingreso Extraordinario:</strong> Para ingresos legítimos que no provienen de una factura de compra habitual (ej: bonificaciones de proveedor, muestras recuperadas).
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Producto
-                  </label>
-                  <select
-                    value={prodSimpleId}
-                    onChange={(e) => setProdSimpleId(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                  >
-                    {PRODUCTS.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.categoryName})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      {tipoAjusteSeleccionado === 'merma_bodega' ? 'Cajas a Descontar (-)' : 'Cajas a Ingresar (+)'}
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={cajasSimple}
-                      onChange={(e) => setCajasSimple(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-right font-bold text-slate-900"
-                    />
-                  </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Fecha del Movimiento
+                      Producto
                     </label>
-                    <input
-                      type="date"
-                      value={fechaManual}
-                      onChange={(e) => setFechaManual(e.target.value)}
+                    <select
+                      value={prodSimpleId}
+                      onChange={(e) => {
+                        setProdSimpleId(e.target.value);
+                        setCajasSimple('');
+                      }}
                       className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                    />
+                    >
+                      <option value="">-- Selecciona un producto a registrar --</option>
+                      {PRODUCTS.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.categoryName})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Motivo o Justificación Obligatoria <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={
-                      tipoAjusteSeleccionado === 'merma_bodega'
-                        ? 'Ej: Rotura de empaque por caída en cámara 1'
-                        : tipoAjusteSeleccionado === 'devolucion_externa'
-                        ? 'Ej: Cajas devueltas por cliente tras evento, aptas para reventa'
-                        : 'Ej: Bonificación adicional entregada por fábrica Lonquén'
-                    }
-                    value={motivoManual}
-                    onChange={(e) => setMotivoManual(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                  />
-                </div>
+                  {!tieneProducto ? (
+                    <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500">
+                      Selecciona un producto del catálogo para habilitar los campos y registrar el movimiento.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Resumen de stock actual en bodega del producto elegido */}
+                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                        <span className="text-slate-600 font-medium">Stock actual en Bodega Central:</span>
+                        <span className="font-bold text-slate-900">{stockBodega} cj</span>
+                      </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Responsable
-                  </label>
-                  <input
-                    type="text"
-                    value={responsableManual}
-                    onChange={(e) => setResponsableManual(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                  />
-                </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                            {tipoAjusteSeleccionado === 'merma_bodega' ? 'Cajas a Descontar (-)' : 'Cajas a Ingresar (+)'} <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Ej: 5"
+                            value={cajasSimple}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '') setCajasSimple('');
+                              else setCajasSimple(Math.max(1, parseInt(val, 10) || 1));
+                            }}
+                            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-right font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
+                          />
+                        </div>
 
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Registrar Movimiento en Inventario</span>
-                  </button>
-                </div>
-              </form>
-            )}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                            Fecha del Movimiento
+                          </label>
+                          <input
+                            type="date"
+                            value={fechaManual}
+                            onChange={(e) => setFechaManual(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                          Motivo o Justificación Obligatoria <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={
+                            tipoAjusteSeleccionado === 'merma_bodega'
+                              ? 'Ej: Rotura de empaque por caída en cámara 1'
+                              : tipoAjusteSeleccionado === 'devolucion_externa'
+                              ? 'Ej: Cajas devueltas por cliente tras evento, aptas para reventa'
+                              : 'Ej: Bonificación adicional entregada por fábrica Lonquén'
+                          }
+                          value={motivoManual}
+                          onChange={(e) => setMotivoManual(e.target.value)}
+                          className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                          Responsable <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={responsableManual}
+                          onChange={(e) => setResponsableManual(e.target.value)}
+                          className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                        />
+                      </div>
+
+                      <div className="pt-2">
+                        <button
+                          type="submit"
+                          disabled={!cajasSimple || typeof cajasSimple !== 'number' || cajasSimple <= 0 || !motivoManual.trim() || !responsableManual.trim()}
+                          className={`w-full py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
+                            cajasSimple && typeof cajasSimple === 'number' && cajasSimple > 0 && motivoManual.trim() && responsableManual.trim()
+                              ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
+                              : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                          }`}
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>
+                            {cajasSimple === '' || typeof cajasSimple !== 'number' || cajasSimple <= 0
+                              ? 'Ingresa cantidad de cajas'
+                              : !motivoManual.trim()
+                              ? 'Ingresa motivo obligatorio'
+                              : !responsableManual.trim()
+                              ? 'Ingresa responsable'
+                              : 'Registrar Movimiento en Inventario'}
+                          </span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </form>
+              );
+            })()}
           </div>
         </div>
       )}
