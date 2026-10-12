@@ -162,7 +162,7 @@ export function InventorySection() {
 
   // Sub-estado: Ajuste por conteo físico unitario
   const [prodConteoId, setProdConteoId] = useState(PRODUCTS[0]?.id || '');
-  const [conteoFisicoReal, setConteoFisicoReal] = useState<number>(0);
+  const [conteoFisicoReal, setConteoFisicoReal] = useState<number | ''>('');
 
   // Sub-estado: Ingreso extraordinario, Devolución o Merma
   const [prodSimpleId, setProdSimpleId] = useState(PRODUCTS[0]?.id || '');
@@ -601,6 +601,11 @@ export function InventorySection() {
     const prod = PRODUCTS.find(p => p.id === prodConteoId);
     if (!prod) return;
 
+    if (conteoFisicoReal === '' || typeof conteoFisicoReal !== 'number') {
+      alert('Debes ingresar la cantidad de cajas contadas físicamente en bodega.');
+      return;
+    }
+
     if (!motivoManual.trim()) {
       alert('Es obligatorio ingresar el motivo del ajuste por conteo físico.');
       return;
@@ -645,6 +650,7 @@ export function InventorySection() {
     persistMovimientos([nuevoMov, ...movimientos]);
 
     setMensajeExitoManual(`Ajuste registrado: ${prod.name} cuadrado a ${conteoFisicoReal} cj (${diferencia > 0 ? '+' : ''}${diferencia} cj).`);
+    setConteoFisicoReal('');
     setMotivoManual('');
     setTimeout(() => {
       setMensajeExitoManual(null);
@@ -1606,7 +1612,10 @@ export function InventorySection() {
 
               <button
                 type="button"
-                onClick={() => setTipoAjusteSeleccionado('ajuste_conteo')}
+                onClick={() => {
+                  setTipoAjusteSeleccionado('ajuste_conteo');
+                  setConteoFisicoReal('');
+                }}
                 className={`p-3 text-left rounded-xl border transition-all ${
                   tipoAjusteSeleccionado === 'ajuste_conteo'
                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
@@ -2017,113 +2026,143 @@ export function InventorySection() {
             )}
 
             {/* Sub-formulario 2: AJUSTE POR CONTEO FÍSICO */}
-            {tipoAjusteSeleccionado === 'ajuste_conteo' && (
-              <form onSubmit={handleConfirmarAjusteConteo} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
-                <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start space-x-2">
-                  <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong>Ajuste por Conteo Físico:</strong> Compara el stock registrado en el sistema con el conteo físico real en bodega y calcula automáticamente la diferencia (positiva o negativa).
-                  </div>
-                </div>
+            {tipoAjusteSeleccionado === 'ajuste_conteo' && (() => {
+              const stockRegistrado = stockList.find(s => s.productId === prodConteoId)?.cajasBodega || 0;
+              const tieneConteo = conteoFisicoReal !== '' && typeof conteoFisicoReal === 'number';
+              const diff = tieneConteo ? conteoFisicoReal - stockRegistrado : null;
+              const puedeAplicar = tieneConteo && diff !== 0;
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Producto a Ajustar
-                  </label>
-                  <select
-                    value={prodConteoId}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      setProdConteoId(id);
-                      const current = stockList.find(s => s.productId === id)?.cajasBodega || 0;
-                      setConteoFisicoReal(current);
-                    }}
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                  >
-                    {PRODUCTS.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.categoryName})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {(() => {
-                  const stockRegistrado = stockList.find(s => s.productId === prodConteoId)?.cajasBodega || 0;
-                  const diff = conteoFisicoReal - stockRegistrado;
-
-                  return (
-                    <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                      <div>
-                        <div className="text-[11px] font-semibold text-slate-500 uppercase">Stock Registrado</div>
-                        <div className="text-xl font-bold text-slate-800 mt-1">{stockRegistrado} cj</div>
-                        <div className="text-[10px] text-slate-400">En Bodega Central</div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-900 uppercase mb-1">
-                          Conteo Físico Real
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={conteoFisicoReal}
-                          onChange={(e) => setConteoFisicoReal(Math.max(0, parseInt(e.target.value) || 0))}
-                          className="w-full px-2 py-1 text-center text-xl font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="text-[11px] font-semibold text-slate-500 uppercase">Diferencia Calculada</div>
-                        <div className={`text-xl font-bold mt-1 ${
-                          diff === 0 ? 'text-slate-400' : diff > 0 ? 'text-emerald-600' : 'text-rose-600'
-                        }`}>
-                          {diff === 0 ? '0' : diff > 0 ? `+${diff}` : diff} cj
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {diff === 0 ? 'Sin diferencia' : diff > 0 ? 'Sobrante (+)' : 'Faltante (-)'}
-                        </div>
-                      </div>
+              return (
+                <form onSubmit={handleConfirmarAjusteConteo} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
+                  <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start space-x-2">
+                    <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong>Ajuste por Conteo Físico:</strong> Compara el stock registrado en el sistema con el conteo físico real en bodega y calcula automáticamente la diferencia (positiva o negativa).
                     </div>
-                  );
-                })()}
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Motivo Obligatorio del Descuadre / Ajuste <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Cuadratura física semanal en cámara frigorífica 2"
-                    value={motivoManual}
-                    onChange={(e) => setMotivoManual(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Producto a Ajustar
+                    </label>
+                    <select
+                      value={prodConteoId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setProdConteoId(id);
+                        setConteoFisicoReal('');
+                      }}
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                    >
+                      {PRODUCTS.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.categoryName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Responsable del Conteo
-                  </label>
-                  <input
-                    type="text"
-                    value={responsableManual}
-                    onChange={(e) => setResponsableManual(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                  />
-                </div>
+                  <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                    <div>
+                      <div className="text-[11px] font-semibold text-slate-500 uppercase">Stock Registrado</div>
+                      <div className="text-xl font-bold text-slate-800 mt-1">{stockRegistrado} cj</div>
+                      <div className="text-[10px] text-slate-400">En Bodega Central</div>
+                    </div>
 
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Aplicar Ajuste por Conteo Físico</span>
-                  </button>
-                </div>
-              </form>
-            )}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-900 uppercase mb-1">
+                        Conteo Físico Real
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Ingresa cajas"
+                        value={conteoFisicoReal}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setConteoFisicoReal('');
+                          } else {
+                            const parsed = parseInt(val, 10);
+                            setConteoFisicoReal(isNaN(parsed) ? '' : Math.max(0, parsed));
+                          }
+                        }}
+                        className="w-full px-2 py-1 text-center text-xl font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 placeholder:text-slate-300 placeholder:text-xs placeholder:font-normal"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="text-[11px] font-semibold text-slate-500 uppercase">Diferencia Calculada</div>
+                      {diff === null ? (
+                        <>
+                          <div className="text-xl font-bold text-slate-400 mt-1">—</div>
+                          <div className="text-[10px] text-slate-400">Esperando conteo</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className={`text-xl font-bold mt-1 ${
+                            diff === 0 ? 'text-slate-600' : diff > 0 ? 'text-emerald-600' : 'text-rose-600'
+                          }`}>
+                            {diff === 0 ? '0 cj' : diff > 0 ? `+${diff} cj` : `${diff} cj`}
+                          </div>
+                          <div className={`text-[10px] font-medium ${
+                            diff === 0 ? 'text-slate-500' : diff > 0 ? 'text-emerald-600' : 'text-rose-600'
+                          }`}>
+                            {diff === 0 ? 'Sin diferencia' : diff > 0 ? 'Sobrante (+)' : 'Faltante (-)'}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Motivo Obligatorio del Descuadre / Ajuste <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Cuadratura física semanal en cámara frigorífica 2"
+                      value={motivoManual}
+                      onChange={(e) => setMotivoManual(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Responsable del Conteo
+                    </label>
+                    <input
+                      type="text"
+                      value={responsableManual}
+                      onChange={(e) => setResponsableManual(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={!puedeAplicar}
+                      className={`w-full py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
+                        puedeAplicar
+                          ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                      }`}
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>
+                        {!tieneConteo
+                          ? 'Ingresa el conteo físico para continuar'
+                          : diff === 0
+                          ? 'Stock cuadrado (Sin diferencia para ajustar)'
+                          : 'Aplicar Ajuste por Conteo Físico'}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              );
+            })()}
 
             {/* Sub-formulario 3, 4 y 5: INGRESOS EXTRAORDINARIOS, DEVOLUCIONES Y MERMAS */}
             {(tipoAjusteSeleccionado === 'ingreso_extraordinario' || 
