@@ -2877,7 +2877,7 @@ export function InventorySection() {
             <div className="h-4 w-px bg-slate-200 hidden sm:block" />
 
             <div className="flex items-center space-x-2">
-              <span className="text-slate-500 font-medium">Entradas a Bodega:</span>
+              <span className="text-slate-500 font-medium">Entradas acumuladas:</span>
               <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-mono">
                 +{metricasAuditoria.ingresosCajas} cj
               </span>
@@ -2889,6 +2889,17 @@ export function InventorySection() {
               <span className="text-slate-500 font-medium">Salidas / Compensaciones:</span>
               <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-mono">
                 −{metricasAuditoria.egresosCajas} cj
+              </span>
+            </div>
+
+            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+            {/* Indicador de stock físico real actual en Bodega Central conectado directamente al Tablero de Stock */}
+            <div className="flex items-center space-x-1.5 bg-blue-50/80 px-2.5 py-1 rounded-lg border border-blue-200 text-blue-900 shadow-2xs">
+              <Package className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
+              <span className="font-semibold">Stock actual en Bodega:</span>
+              <span className="font-bold font-mono">
+                {totalesEmpresa.bodega} cajas
               </span>
             </div>
 
