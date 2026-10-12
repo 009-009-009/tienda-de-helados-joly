@@ -65,7 +65,8 @@ export type TipoAjusteManual =
   | 'ajuste_conteo'
   | 'ingreso_extraordinario'
   | 'devolucion_externa'
-  | 'merma_bodega';
+  | 'merma_bodega'
+  | 'reversion_movimientos';
 
 export interface ItemAjusteManual {
   productId: string;
