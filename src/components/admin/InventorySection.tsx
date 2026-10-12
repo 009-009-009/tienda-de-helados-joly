@@ -161,7 +161,7 @@ export function InventorySection() {
   }, [movimientos]);
 
   // Sub-estado: Ajuste por conteo físico unitario
-  const [prodConteoId, setProdConteoId] = useState(PRODUCTS[0]?.id || '');
+  const [prodConteoId, setProdConteoId] = useState<string>('');
   const [conteoFisicoReal, setConteoFisicoReal] = useState<number | ''>('');
 
   // Sub-estado: Ingreso extraordinario, Devolución o Merma
@@ -598,6 +598,11 @@ export function InventorySection() {
 
   const handleConfirmarAjusteConteo = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!prodConteoId) {
+      alert('Debes seleccionar un producto del catálogo para realizar el conteo físico.');
+      return;
+    }
+
     const prod = PRODUCTS.find(p => p.id === prodConteoId);
     if (!prod) return;
 
@@ -650,6 +655,7 @@ export function InventorySection() {
     persistMovimientos([nuevoMov, ...movimientos]);
 
     setMensajeExitoManual(`Ajuste registrado: ${prod.name} cuadrado a ${conteoFisicoReal} cj (${diferencia > 0 ? '+' : ''}${diferencia} cj).`);
+    setProdConteoId('');
     setConteoFisicoReal('');
     setMotivoManual('');
     setTimeout(() => {
@@ -1614,6 +1620,7 @@ export function InventorySection() {
                 type="button"
                 onClick={() => {
                   setTipoAjusteSeleccionado('ajuste_conteo');
+                  setProdConteoId('');
                   setConteoFisicoReal('');
                 }}
                 className={`p-3 text-left rounded-xl border transition-all ${
@@ -2027,10 +2034,14 @@ export function InventorySection() {
 
             {/* Sub-formulario 2: AJUSTE POR CONTEO FÍSICO */}
             {tipoAjusteSeleccionado === 'ajuste_conteo' && (() => {
-              const stockRegistrado = stockList.find(s => s.productId === prodConteoId)?.cajasBodega || 0;
-              const tieneConteo = conteoFisicoReal !== '' && typeof conteoFisicoReal === 'number';
+              const productoSeleccionado = PRODUCTS.find(p => p.id === prodConteoId);
+              const tieneProducto = Boolean(productoSeleccionado);
+              const stockRegistrado = tieneProducto
+                ? (stockList.find(s => s.productId === prodConteoId)?.cajasBodega || 0)
+                : 0;
+              const tieneConteo = tieneProducto && conteoFisicoReal !== '' && typeof conteoFisicoReal === 'number';
               const diff = tieneConteo ? conteoFisicoReal - stockRegistrado : null;
-              const puedeAplicar = tieneConteo && diff !== 0;
+              const puedeAplicar = tieneProducto && tieneConteo && diff !== 0;
 
               return (
                 <form onSubmit={handleConfirmarAjusteConteo} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
@@ -2054,6 +2065,7 @@ export function InventorySection() {
                       }}
                       className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
                     >
+                      <option value="">-- Selecciona un producto a ajustar --</option>
                       {PRODUCTS.map(p => (
                         <option key={p.id} value={p.id}>
                           {p.name} ({p.categoryName})
@@ -2065,8 +2077,17 @@ export function InventorySection() {
                   <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
                     <div>
                       <div className="text-[11px] font-semibold text-slate-500 uppercase">Stock Registrado</div>
-                      <div className="text-xl font-bold text-slate-800 mt-1">{stockRegistrado} cj</div>
-                      <div className="text-[10px] text-slate-400">En Bodega Central</div>
+                      {tieneProducto ? (
+                        <>
+                          <div className="text-xl font-bold text-slate-800 mt-1">{stockRegistrado} cj</div>
+                          <div className="text-[10px] text-slate-400">En Bodega Central</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xl font-bold text-slate-400 mt-1">—</div>
+                          <div className="text-[10px] text-slate-400">Esperando producto</div>
+                        </>
+                      )}
                     </div>
 
                     <div>
@@ -2076,8 +2097,9 @@ export function InventorySection() {
                       <input
                         type="number"
                         min="0"
-                        placeholder="Ingresa cajas"
-                        value={conteoFisicoReal}
+                        disabled={!tieneProducto}
+                        placeholder={tieneProducto ? "Ingresa cajas" : "Elige producto"}
+                        value={tieneProducto ? conteoFisicoReal : ''}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === '') {
@@ -2087,13 +2109,22 @@ export function InventorySection() {
                             setConteoFisicoReal(isNaN(parsed) ? '' : Math.max(0, parsed));
                           }
                         }}
-                        className="w-full px-2 py-1 text-center text-xl font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 placeholder:text-slate-300 placeholder:text-xs placeholder:font-normal"
+                        className={`w-full px-2 py-1 text-center text-xl font-bold border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 placeholder:text-slate-300 placeholder:text-xs placeholder:font-normal ${
+                          tieneProducto
+                            ? 'bg-white border-slate-300 text-slate-900'
+                            : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                        }`}
                       />
                     </div>
 
                     <div>
                       <div className="text-[11px] font-semibold text-slate-500 uppercase">Diferencia Calculada</div>
-                      {diff === null ? (
+                      {!tieneProducto ? (
+                        <>
+                          <div className="text-xl font-bold text-slate-400 mt-1">—</div>
+                          <div className="text-[10px] text-slate-400">Esperando producto</div>
+                        </>
+                      ) : diff === null ? (
                         <>
                           <div className="text-xl font-bold text-slate-400 mt-1">—</div>
                           <div className="text-[10px] text-slate-400">Esperando conteo</div>
@@ -2121,10 +2152,15 @@ export function InventorySection() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Ej: Cuadratura física semanal en cámara frigorífica 2"
+                      disabled={!tieneProducto}
+                      placeholder={tieneProducto ? "Ej: Cuadratura física semanal en cámara frigorífica 2" : "Selecciona un producto primero"}
                       value={motivoManual}
                       onChange={(e) => setMotivoManual(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 ${
+                        tieneProducto
+                          ? 'bg-white border-slate-300 text-slate-900'
+                          : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
                     />
                   </div>
 
@@ -2134,9 +2170,14 @@ export function InventorySection() {
                     </label>
                     <input
                       type="text"
+                      disabled={!tieneProducto}
                       value={responsableManual}
                       onChange={(e) => setResponsableManual(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 ${
+                        tieneProducto
+                          ? 'bg-white border-slate-300 text-slate-900'
+                          : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
                     />
                   </div>
 
@@ -2152,7 +2193,9 @@ export function InventorySection() {
                     >
                       <Check className="w-4 h-4" />
                       <span>
-                        {!tieneConteo
+                        {!tieneProducto
+                          ? 'Selecciona un producto para comenzar'
+                          : !tieneConteo
                           ? 'Ingresa el conteo físico para continuar'
                           : diff === 0
                           ? 'Stock cuadrado (Sin diferencia para ajustar)'
