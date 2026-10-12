@@ -46,7 +46,8 @@ import {
   X,
   ChevronRight,
   Undo2,
-  RotateCcw
+  RotateCcw,
+  ArrowRight
 } from 'lucide-react';
 import { formatCLP } from '../../utils/format';
 
@@ -193,6 +194,125 @@ export function InventorySection() {
       }
     });
     return set;
+  }, [movimientos]);
+
+  // ----------------------------------------------------
+  // HELPERS DE TIEMPO, UBICACIONES Y ORDENAMIENTO DE AUDITORÍA
+  // ----------------------------------------------------
+  const getFechaHoraActualLocal = (fechaBase?: string) => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const horaStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    if (fechaBase && /^\d{4}-\d{2}-\d{2}$/.test(fechaBase)) {
+      return `${fechaBase} ${horaStr}`;
+    }
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${horaStr}`;
+  };
+
+  const getNombreUbicacion = (ub: string) => {
+    switch (ub) {
+      case 'BODEGA_CENTRAL': return 'Bodega Central';
+      case 'PROVEEDOR': return 'Proveedor';
+      case 'APERTURA_INICIAL': return 'Apertura Inicial';
+      case 'AJUSTE': return 'Ajuste / Cuadre';
+      case 'FURGON_1': return 'Furgón 1';
+      case 'FURGON_2': return 'Furgón 2';
+      case 'EXTERNO': return 'Externo';
+      case 'MERMA': return 'Merma';
+      default: return ub;
+    }
+  };
+
+  const getSentidoMovimiento = (mov: MovimientoInventario) => {
+    if (mov.destino === 'BODEGA_CENTRAL') {
+      return {
+        signo: '+',
+        esIngreso: true,
+        claseBadge: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      };
+    }
+    if (mov.origen === 'BODEGA_CENTRAL') {
+      return {
+        signo: '−',
+        esIngreso: false,
+        claseBadge: 'bg-rose-50 text-rose-700 border-rose-200'
+      };
+    }
+    return {
+      signo: '',
+      esIngreso: false,
+      claseBadge: 'bg-slate-100 text-slate-700 border-slate-200'
+    };
+  };
+
+  const ordenarMovimientosCronologico = (lista: MovimientoInventario[]): MovimientoInventario[] => {
+    return [...lista].sort((a, b) => {
+      const parseFechaStr = (fStr: string) => {
+        if (!fStr) return 0;
+        const t = Date.parse(fStr.replace(' ', 'T'));
+        return isNaN(t) ? 0 : t;
+      };
+      const tA = parseFechaStr(a.fecha);
+      const tB = parseFechaStr(b.fecha);
+
+      if (tA !== tB) {
+        return tB - tA;
+      }
+
+      const numA = a.id.match(/\d{10,14}/);
+      const numB = b.id.match(/\d{10,14}/);
+      if (numA && numB) {
+        const vA = parseInt(numA[0], 10);
+        const vB = parseInt(numB[0], 10);
+        if (vA !== vB) return vB - vA;
+      }
+
+      return (b.fecha || '').localeCompare(a.fecha || '');
+    });
+  };
+
+  // Filtros y orden cronológico de Auditoría Unificada
+  const [busquedaMovimiento, setBusquedaMovimiento] = useState('');
+  const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState<string>('todos');
+
+  const movimientosOrdenados = useMemo(() => {
+    return ordenarMovimientosCronologico(movimientos);
+  }, [movimientos]);
+
+  const movimientosFiltrados = useMemo(() => {
+    return movimientosOrdenados.filter((mov) => {
+      if (filtroTipoMovimiento !== 'todos' && mov.tipo !== filtroTipoMovimiento) {
+        return false;
+      }
+      if (busquedaMovimiento.trim()) {
+        const q = busquedaMovimiento.toLowerCase().trim();
+        const matchRef = mov.referenciaDoc?.toLowerCase().includes(q);
+        const matchDesc = mov.descripcion?.toLowerCase().includes(q);
+        const matchResp = mov.responsable?.toLowerCase().includes(q);
+        const matchItems = mov.items?.some(it => it.productName.toLowerCase().includes(q));
+        return matchRef || matchDesc || matchResp || matchItems;
+      }
+      return true;
+    });
+  }, [movimientosOrdenados, filtroTipoMovimiento, busquedaMovimiento]);
+
+  const metricasAuditoria = useMemo(() => {
+    let ingresosCajas = 0;
+    let egresosCajas = 0;
+    let conteosAjustes = 0;
+
+    movimientos.forEach(m => {
+      if (m.destino === 'BODEGA_CENTRAL') {
+        ingresosCajas += m.totalCajas;
+      } else if (m.origen === 'BODEGA_CENTRAL') {
+        egresosCajas += m.totalCajas;
+      }
+      if (m.tipo === 'AJUSTE_CONTEO_FISICO') {
+        conteosAjustes += 1;
+      }
+    });
+
+    return { ingresosCajas, egresosCajas, conteosAjustes };
   }, [movimientos]);
 
   // ----------------------------------------------------
@@ -489,7 +609,7 @@ export function InventorySection() {
       items: [...itemsFactura],
       totalCajasFacturadas: totalCajasFacturadasDoc,
       totalCajasRecibidas: totalFisicas,
-      confirmadaAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      confirmadaAt: getFechaHoraActualLocal(fechaRecepcion),
       confirmadaPor: responsableFactura,
       esDemo: false
     };
@@ -503,7 +623,7 @@ export function InventorySection() {
           ...item,
           cajasBodega: nuevoBodega,
           totalEmpresa: nuevoBodega + item.cajasAsignadasFurgon1 + item.cajasAsignadasFurgon2,
-          ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16)
+          ultimaActualizacion: getFechaHoraActualLocal()
         };
       }
       return item;
@@ -512,7 +632,7 @@ export function InventorySection() {
     // 3. Crear movimiento unificado de inventario
     const nuevoMovimiento: MovimientoInventario = {
       id: `MOV-${Date.now()}`,
-      fecha: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      fecha: getFechaHoraActualLocal(fechaRecepcion),
       tipo: 'RECEPCION_FACTURA',
       referenciaDoc: numLimpio,
       descripcion: `Recepción factura ${numLimpio} (${proveedorFinal}) - ${totalFisicas} cj ingresadas a Bodega Central`,
@@ -593,7 +713,7 @@ export function InventorySection() {
           ...stockItem,
           cajasBodega: nuevoBodega,
           totalEmpresa: nuevoBodega + stockItem.cajasAsignadasFurgon1 + stockItem.cajasAsignadasFurgon2,
-          ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16)
+          ultimaActualizacion: getFechaHoraActualLocal()
         };
       }
       return stockItem;
@@ -603,7 +723,7 @@ export function InventorySection() {
 
     const nuevoMov: MovimientoInventario = {
       id: `MOV-APE-${Date.now()}`,
-      fecha: `${fechaManual} ${new Date().toTimeString().slice(0, 5)}`,
+      fecha: getFechaHoraActualLocal(fechaManual),
       tipo: 'INVENTARIO_INICIAL_APERTURA',
       referenciaDoc: `APERTURA-${Date.now().toString().slice(-4)}`,
       descripcion: `Inventario Inicial de Apertura: ${totalCajasIniciales} cj cargadas en Bodega Central. Motivo: ${motivoManual}`,
@@ -674,7 +794,7 @@ export function InventorySection() {
           ...s,
           cajasBodega: conteoFisicoReal,
           totalEmpresa: conteoFisicoReal + s.cajasAsignadasFurgon1 + s.cajasAsignadasFurgon2,
-          ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16)
+          ultimaActualizacion: getFechaHoraActualLocal()
         };
       }
       return s;
@@ -682,7 +802,7 @@ export function InventorySection() {
 
     const nuevoMov: MovimientoInventario = {
       id: `MOV-CONT-${Date.now()}`,
-      fecha: `${fechaManual} ${new Date().toTimeString().slice(0, 5)}`,
+      fecha: getFechaHoraActualLocal(fechaManual),
       tipo: 'AJUSTE_CONTEO_FISICO',
       referenciaDoc: `CUADRE-${Date.now().toString().slice(-4)}`,
       descripcion: `Ajuste por conteo físico: ${prod.name}. Stock anterior: ${stockActual} cj, Conteo real: ${conteoFisicoReal} cj (Diferencia: ${diferencia > 0 ? '+' : ''}${diferencia} cj). Motivo: ${motivoManual}`,
@@ -761,7 +881,7 @@ export function InventorySection() {
           ...s,
           cajasBodega: nuevoBodega,
           totalEmpresa: nuevoBodega + s.cajasAsignadasFurgon1 + s.cajasAsignadasFurgon2,
-          ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16)
+          ultimaActualizacion: getFechaHoraActualLocal()
         };
       }
       return s;
@@ -770,7 +890,7 @@ export function InventorySection() {
     // 2. Crear movimiento compensatorio
     const movCompensatorio: MovimientoInventario = {
       id: `MOV-REV-${Date.now()}`,
-      fecha: `${new Date().toISOString().split('T')[0]} ${new Date().toTimeString().slice(0, 5)}`,
+      fecha: getFechaHoraActualLocal(),
       tipo: 'AJUSTE_CONTEO_FISICO',
       referenciaDoc: `REV-${refOriginal}`,
       descripcion: `Reversión compensatoria de ${refOriginal}: ${deltaStock > 0 ? '+' : ''}${deltaStock} cj de ${prod.name}. Deshace descuadre previo. Motivo: ${motivoReversion.trim()}`,
@@ -838,7 +958,7 @@ export function InventorySection() {
           ...item,
           cajasBodega: nuevoBodega,
           totalEmpresa: nuevoBodega + item.cajasAsignadasFurgon1 + item.cajasAsignadasFurgon2,
-          ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16)
+          ultimaActualizacion: getFechaHoraActualLocal()
         };
       }
       return item;
@@ -846,7 +966,7 @@ export function InventorySection() {
 
     const nuevoMov: MovimientoInventario = {
       id: `MOV-SIMP-${Date.now()}`,
-      fecha: `${fechaManual} ${new Date().toTimeString().slice(0, 5)}`,
+      fecha: getFechaHoraActualLocal(fechaManual),
       tipo: movTipo,
       referenciaDoc: `DOC-${Date.now().toString().slice(-4)}`,
       descripcion: `${descTipo}: ${deltaCajas > 0 ? '+' : ''}${deltaCajas} cj de ${prod.name}. Motivo: ${motivoManual}`,
@@ -2432,7 +2552,7 @@ export function InventorySection() {
 
                 {/* Historial de Ajustes por Conteo Físico Confirmados y Acción de Reversión */}
                 {(() => {
-                  const ajustesConteo = movimientos.filter(m => m.tipo === 'AJUSTE_CONTEO_FISICO');
+                  const ajustesConteo = ordenarMovimientosCronologico(movimientos.filter(m => m.tipo === 'AJUSTE_CONTEO_FISICO'));
                   if (ajustesConteo.length === 0) return null;
 
                   return (
@@ -2445,7 +2565,7 @@ export function InventorySection() {
                           </h4>
                         </div>
                         <span className="text-[11px] text-slate-400">
-                          Historial auditable con reversión compensatoria
+                          Historial ordenado cronológicamente con reversión compensatoria
                         </span>
                       </div>
 
@@ -2478,10 +2598,16 @@ export function InventorySection() {
                                   <td className="py-2 px-3 text-slate-800">
                                     {mov.descripcion}
                                   </td>
-                                  <td className={`py-2 px-3 text-right font-bold font-mono ${
-                                    esIngreso ? 'text-emerald-700' : 'text-rose-700'
-                                  }`}>
-                                    {esIngreso ? `+${mov.totalCajas}` : `-${mov.totalCajas}`} cj
+                                  <td className="py-2 px-3 text-right whitespace-nowrap font-mono font-bold">
+                                    {esIngreso ? (
+                                      <span className="inline-block px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        +{mov.totalCajas} cj
+                                      </span>
+                                    ) : (
+                                      <span className="inline-block px-2 py-0.5 rounded text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                        −{mov.totalCajas} cj
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="py-2 px-3 text-slate-500">
                                     {mov.responsable}
@@ -2695,110 +2821,241 @@ export function InventorySection() {
       {/* ---------------------------------------------------- */}
       {subTab === 'movimientos' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          {/* Encabezado y resumen cuantitativo */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-slate-900">Auditoría Unificada de Movimientos</h3>
-              <p className="text-sm text-slate-500">
-                Historial cronológico de recepciones con factura, aperturas, despachos a furgón, retornos y ajustes.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Historial cronológico ordenado del más reciente al más antiguo con trazabilidad física, documental y reversiones compensatorias.
               </p>
             </div>
-            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-              {movimientos.length} eventos registrados
-            </span>
+            <div className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 self-start sm:self-auto">
+              {movimientos.length} eventos en total
+            </div>
           </div>
 
+          {/* Tarjetas de métricas consolidadas */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Eventos Totales</div>
+              <div className="text-xl font-bold text-slate-900 mt-0.5">{movimientos.length}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Operaciones registradas</div>
+            </div>
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Ingresos a Bodega</div>
+              <div className="text-xl font-bold text-emerald-700 mt-0.5">+{metricasAuditoria.ingresosCajas} cj</div>
+              <div className="text-[10px] text-emerald-600/80 mt-0.5">Facturas, aperturas y devoluciones</div>
+            </div>
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Salidas / Descuentos</div>
+              <div className="text-xl font-bold text-rose-700 mt-0.5">−{metricasAuditoria.egresosCajas} cj</div>
+              <div className="text-[10px] text-rose-600/80 mt-0.5">Faltantes, mermas y compensaciones</div>
+            </div>
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Ajustes & Reversiones</div>
+              <div className="text-xl font-bold text-amber-700 mt-0.5">{metricasAuditoria.conteosAjustes}</div>
+              <div className="text-[10px] text-amber-600/80 mt-0.5">Conteos físicos y compensaciones</div>
+            </div>
+          </div>
+
+          {/* Barra de Filtro y Búsqueda Rápida */}
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row gap-2.5 items-center justify-between">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar ref, producto, motivo o responsable..."
+                value={busquedaMovimiento}
+                onChange={(e) => setBusquedaMovimiento(e.target.value)}
+                className="w-full pl-9 pr-8 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white text-slate-900 placeholder:text-slate-400"
+              />
+              {busquedaMovimiento && (
+                <button
+                  type="button"
+                  onClick={() => setBusquedaMovimiento('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <Filter className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <select
+                value={filtroTipoMovimiento}
+                onChange={(e) => setFiltroTipoMovimiento(e.target.value)}
+                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 text-slate-700 w-full sm:w-auto font-medium"
+              >
+                <option value="todos">Todos los tipos de movimiento</option>
+                <option value="RECEPCION_FACTURA">Facturas de Compra</option>
+                <option value="AJUSTE_CONTEO_FISICO">Conteo Físico y Reversiones</option>
+                <option value="INVENTARIO_INICIAL_APERTURA">Apertura Inicial</option>
+                <option value="INGRESO_EXTRAORDINARIO">Ingreso Extraordinario</option>
+                <option value="DEVOLUCION_EXTERNA">Devolución Externa</option>
+                <option value="AJUSTE_MERMA_BODEGA">Merma Bodega</option>
+                <option value="ASIGNACION_FURGON">Despacho Furgón</option>
+                <option value="RETORNO_FURGON">Retorno Furgón</option>
+              </select>
+
+              {(busquedaMovimiento || filtroTipoMovimiento !== 'todos') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusquedaMovimiento('');
+                    setFiltroTipoMovimiento('todos');
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-900 px-2 py-1 underline whitespace-nowrap cursor-pointer"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tabla de Movimientos Unificada */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
+              <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                    <th className="py-3 px-4">Fecha / Hora</th>
-                    <th className="py-3 px-4">Tipo Movimiento</th>
-                    <th className="py-3 px-4">Referencia</th>
-                    <th className="py-3 px-4">Descripción y Detalle</th>
-                    <th className="py-3 px-4 text-center">Origen $\rightarrow$ Destino</th>
-                    <th className="py-3 px-4 text-right">Cajas</th>
-                    <th className="py-3 px-4">Responsable</th>
-                    <th className="py-3 px-4 text-center">Acción</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3 px-3.5 whitespace-nowrap">Fecha / Hora</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">Tipo Movimiento</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">Referencia</th>
+                    <th className="py-3 px-3.5">Descripción y Detalle</th>
+                    <th className="py-3 px-3.5 text-center whitespace-nowrap">Flujo (Origen → Destino)</th>
+                    <th className="py-3 px-3.5 text-right whitespace-nowrap">Cajas</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">Responsable</th>
+                    <th className="py-3 px-3.5 text-center whitespace-nowrap">Acción</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {movimientos.map((mov) => {
-                    const esIngreso = mov.destino === 'BODEGA_CENTRAL';
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {movimientosFiltrados.map((mov) => {
+                    const sentido = getSentidoMovimiento(mov);
+                    const esReversion = mov.referenciaDoc.startsWith('REV-');
+                    const yaRevertido = referenciasAjustesRevertidos.has(mov.referenciaDoc);
+
                     return (
-                      <tr key={mov.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-4 text-slate-500 font-mono text-xs whitespace-nowrap">
-                          {mov.fecha}
+                      <tr key={mov.id} className="hover:bg-slate-50/70 transition-colors">
+                        {/* Fecha y Hora */}
+                        <td className="py-2.5 px-3.5 text-slate-600 font-mono text-xs whitespace-nowrap">
+                          <div className="flex items-center space-x-1.5">
+                            <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                            <span>{mov.fecha}</span>
+                          </div>
                         </td>
-                        <td className="py-3 px-4">
-                          {mov.tipo === 'INVENTARIO_INICIAL_APERTURA' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+
+                        {/* Tipo Movimiento con badge sobrio */}
+                        <td className="py-2.5 px-3.5 whitespace-nowrap">
+                          {esReversion ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                              Compensación Reversión
+                            </span>
+                          ) : mov.tipo === 'INVENTARIO_INICIAL_APERTURA' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                               Apertura Inicial
                             </span>
-                          )}
-                          {mov.tipo === 'RECEPCION_FACTURA' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
+                          ) : mov.tipo === 'RECEPCION_FACTURA' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
                               Factura Compra
                             </span>
-                          )}
-                          {mov.tipo === 'AJUSTE_CONTEO_FISICO' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                          ) : mov.tipo === 'AJUSTE_CONTEO_FISICO' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                               Conteo Físico
                             </span>
-                          )}
-                          {mov.tipo === 'ASIGNACION_FURGON' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-800 border border-purple-200">
+                          ) : mov.tipo === 'ASIGNACION_FURGON' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
                               Despacho Furgón
                             </span>
-                          )}
-                          {mov.tipo === 'RETORNO_FURGON' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200">
+                          ) : mov.tipo === 'RETORNO_FURGON' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-teal-50 text-teal-800 border border-teal-200">
                               Retorno Furgón
                             </span>
-                          )}
-                          {mov.tipo === 'DEVOLUCION_EXTERNA' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          ) : mov.tipo === 'DEVOLUCION_EXTERNA' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                               Devolución Ext.
                             </span>
-                          )}
-                          {mov.tipo === 'INGRESO_EXTRAORDINARIO' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-800 border border-indigo-200">
+                          ) : mov.tipo === 'INGRESO_EXTRAORDINARIO' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
                               Extraordinario
                             </span>
-                          )}
-                          {mov.tipo === 'AJUSTE_MERMA_BODEGA' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200">
+                          ) : mov.tipo === 'AJUSTE_MERMA_BODEGA' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
                               Merma Bodega
                             </span>
-                          )}
-                          {mov.tipo === 'INGRESO_MANUAL' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                               Ajuste Manual
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs text-slate-600">
-                          {mov.referenciaDoc}
+
+                        {/* Referencia documental y vínculo de reversión */}
+                        <td className="py-2.5 px-3.5 whitespace-nowrap">
+                          <div className="font-mono text-xs font-semibold text-slate-800">
+                            {mov.referenciaDoc}
+                          </div>
+                          {esReversion && (
+                            <div className="text-[10px] text-purple-700 font-medium mt-0.5">
+                              Compensa a {mov.referenciaDoc.replace('REV-', '')}
+                            </div>
+                          )}
+                          {yaRevertido && (
+                            <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                              ✓ Compensado por reversión
+                            </div>
+                          )}
                         </td>
-                        <td className="py-3 px-4 text-slate-800">
-                          {mov.descripcion}
+
+                        {/* Descripción y desglose de items */}
+                        <td className="py-2.5 px-3.5 text-slate-800 max-w-sm">
+                          <div className="text-xs text-slate-800 leading-snug">
+                            {mov.descripcion}
+                          </div>
+                          {mov.items && mov.items.length > 0 && mov.tipo !== 'RECEPCION_FACTURA' && (
+                            <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap gap-1">
+                              {mov.items.map((it, i) => (
+                                <span key={i} className="inline-flex items-center text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/70">
+                                  {it.productName}: {it.cajas} cj
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </td>
-                        <td className="py-3 px-4 text-center text-xs font-mono text-slate-500">
-                          {mov.origen} $\rightarrow$ {mov.destino}
+
+                        {/* Flujo: Origen → Destino */}
+                        <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
+                          <div className="inline-flex items-center space-x-1.5 text-xs text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/80">
+                            <span className="font-medium text-slate-700">{getNombreUbicacion(mov.origen)}</span>
+                            <ArrowRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                            <span className="font-semibold text-slate-900">{getNombreUbicacion(mov.destino)}</span>
+                          </div>
                         </td>
-                        <td className={`py-3 px-4 text-right font-bold ${esIngreso ? 'text-emerald-700' : 'text-slate-800'}`}>
-                          {esIngreso ? `+${mov.totalCajas}` : mov.totalCajas} cj
+
+                        {/* Columna Cajas: Signo explícito y uniforme (+ / −) */}
+                        <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                          <span className={`inline-block font-mono font-bold text-xs px-2.5 py-0.5 rounded-md border ${sentido.claseBadge}`}>
+                            {sentido.signo}{mov.totalCajas} cj
+                          </span>
                         </td>
-                        <td className="py-3 px-4 text-xs text-slate-500">
-                          {mov.responsable}
+
+                        {/* Responsable */}
+                        <td className="py-2.5 px-3.5 text-xs text-slate-600 whitespace-nowrap">
+                          <div className="flex items-center space-x-1.5">
+                            <User className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                            <span className="font-medium text-slate-800">{mov.responsable || 'No registrado'}</span>
+                          </div>
                         </td>
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
+
+                        {/* Acción: Reversión de Conteo Físico */}
+                        <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
                           {mov.tipo === 'AJUSTE_CONTEO_FISICO' && (
-                            mov.referenciaDoc.startsWith('REV-') ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                Compensación
+                            esReversion ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                Compensatorio
                               </span>
-                            ) : referenciasAjustesRevertidos.has(mov.referenciaDoc) ? (
+                            ) : yaRevertido ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
                                 ✓ Revertido
                               </span>
@@ -2822,10 +3079,32 @@ export function InventorySection() {
                       </tr>
                     );
                   })}
-                  {movimientos.length === 0 && (
+
+                  {movimientosFiltrados.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
-                        Historial de movimientos limpio. No hay eventos registrados.
+                      <td colSpan={8} className="py-10 text-center text-slate-400 text-xs">
+                        {movimientos.length === 0 ? (
+                          <div>
+                            <Clock className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+                            <div className="font-semibold text-slate-600">Historial de movimientos limpio</div>
+                            <div className="text-slate-400 mt-0.5">Las recepciones con factura, aperturas y ajustes aparecerán aquí en estricto orden cronológico.</div>
+                          </div>
+                        ) : (
+                          <div>
+                            <Search className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+                            <div className="font-semibold text-slate-600">No se encontraron movimientos con los filtros aplicados</div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBusquedaMovimiento('');
+                                setFiltroTipoMovimiento('todos');
+                              }}
+                              className="mt-2 text-xs font-semibold text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                            >
+                              Restablecer búsqueda y filtros
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}
