@@ -616,6 +616,11 @@ export function InventorySection() {
       return;
     }
 
+    if (!responsableManual.trim()) {
+      alert('Es obligatorio ingresar el responsable del conteo físico.');
+      return;
+    }
+
     const itemStock = stockList.find(s => s.productId === prod.id);
     const stockActual = itemStock?.cajasBodega || 0;
     const diferencia = conteoFisicoReal - stockActual;
@@ -2166,11 +2171,12 @@ export function InventorySection() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Responsable del Conteo
+                      Responsable del Conteo <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       disabled={!tieneProducto}
+                      placeholder={tieneProducto ? "Ej: Encargado de Bodega" : "Selecciona un producto primero"}
                       value={responsableManual}
                       onChange={(e) => setResponsableManual(e.target.value)}
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800 ${
