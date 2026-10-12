@@ -155,6 +155,11 @@ export function InventorySection() {
     return PRODUCTS.filter(p => !idsPresentes.has(p.id));
   }, [itemsApertura]);
 
+  // Verificar si ya existe un inventario inicial registrado en auditoría (operación única)
+  const aperturaRegistrada = useMemo(() => {
+    return movimientos.find(m => m.tipo === 'INVENTARIO_INICIAL_APERTURA' && !m.esDemo);
+  }, [movimientos]);
+
   // Sub-estado: Ajuste por conteo físico unitario
   const [prodConteoId, setProdConteoId] = useState(PRODUCTS[0]?.id || '');
   const [conteoFisicoReal, setConteoFisicoReal] = useState<number>(0);
@@ -507,6 +512,12 @@ export function InventorySection() {
   // ----------------------------------------------------
   const handleConfirmarAperturaInicial = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (aperturaRegistrada) {
+      alert(`El Inventario Inicial de Apertura ya fue registrado previamente (${aperturaRegistrada.referenciaDoc} el ${aperturaRegistrada.fecha}). Por regla de negocio es una operación única para evitar duplicar existencias. Si necesitas ingresar compras usa «Recepción con Factura» o «Ingreso Extraordinario», y para corregir diferencias usa «Conteo Físico».`);
+      return;
+    }
+
     if (!motivoManual.trim()) {
       alert('Es obligatorio ingresar el motivo o justificativo.');
       return;
@@ -535,14 +546,15 @@ export function InventorySection() {
       return;
     }
 
+    // Acumular stock físico de apertura a las existencias existentes en Bodega Central (sin borrar compras de facturas)
     const nuevoStock = stockList.map(stockItem => {
       const itemApertura = itemsApertura.find(it => it.productId === stockItem.productId);
-      if (itemApertura) {
-        const cajasFisicas = Math.max(0, itemApertura.cajas);
+      if (itemApertura && itemApertura.cajas > 0) {
+        const nuevoBodega = stockItem.cajasBodega + itemApertura.cajas;
         return {
           ...stockItem,
-          cajasBodega: cajasFisicas,
-          totalEmpresa: cajasFisicas + stockItem.cajasAsignadasFurgon1 + stockItem.cajasAsignadasFurgon2,
+          cajasBodega: nuevoBodega,
+          totalEmpresa: nuevoBodega + stockItem.cajasAsignadasFurgon1 + stockItem.cajasAsignadasFurgon2,
           ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16)
         };
       }
@@ -576,6 +588,7 @@ export function InventorySection() {
     persistMovimientos([nuevoMov, ...movimientos]);
 
     setMensajeExitoManual(`¡Inventario Inicial cargado exitosamente! Se establecieron ${totalCajasIniciales} cajas en Bodega Central.`);
+    setItemsApertura([]);
     setMotivoManual('');
     setTimeout(() => {
       setMensajeExitoManual(null);
@@ -1663,12 +1676,60 @@ export function InventorySection() {
             {/* Sub-formulario 1: INVENTARIO INICIAL DE APERTURA MULTILÍNEA */}
             {tipoAjusteSeleccionado === 'inventario_inicial' && (
               <form onSubmit={handleConfirmarAperturaInicial} className="space-y-5 border-t border-slate-200 pt-5">
-                <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-900 flex items-start space-x-2">
-                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong>Inventario Inicial de Apertura:</strong> Utiliza esta opción para registrar por única vez el stock físico que JOLY tiene físicamente en sus cámaras antes de comenzar las operaciones diarias. Permite ingresar múltiples productos en una misma operación.
+                {aperturaRegistrada ? (
+                  <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 text-emerald-950">
+                    <div className="flex items-start space-x-3">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <h4 className="font-bold text-sm text-emerald-900">
+                            Inventario Inicial de Apertura ya registrado
+                          </h4>
+                          <span className="text-[11px] font-semibold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">
+                            Doc: {aperturaRegistrada.referenciaDoc}
+                          </span>
+                        </div>
+                        <p className="text-xs text-emerald-800 leading-relaxed">
+                          El stock físico base fue establecido el <strong>{aperturaRegistrada.fecha}</strong> por <strong>{aperturaRegistrada.responsable}</strong> con un total de <strong>{aperturaRegistrada.totalCajas} cajas</strong> en Bodega Central.
+                        </p>
+                        <div className="mt-2 text-xs text-emerald-900 bg-white/80 border border-emerald-200 p-3 rounded-lg leading-relaxed">
+                          <strong className="block text-emerald-950 mb-1">Regla de negocio JOLY (Operación única de apertura):</strong>
+                          La apertura física se registra por única vez para evitar duplicar existencias.
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSubTab('factura')}
+                              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-md text-xs font-semibold shadow-xs"
+                            >
+                              Ir a Recepción con Factura
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTipoAjusteSeleccionado('ajuste_conteo')}
+                              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-md text-xs font-semibold shadow-xs"
+                            >
+                              Ir a Conteo Físico (Ajustes)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSubTab('stock')}
+                              className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white rounded-md text-xs font-semibold shadow-xs"
+                            >
+                              Ver Stock Actual en Bodega
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-900 flex items-start space-x-2">
+                    <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong>Inventario Inicial de Apertura:</strong> Utiliza esta opción para registrar por única vez el stock físico que JOLY tiene físicamente en sus cámaras antes de comenzar las operaciones diarias. Permite ingresar múltiples productos en una misma operación.
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -1937,10 +1998,19 @@ export function InventorySection() {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2"
+                    disabled={!!aperturaRegistrada}
+                    className={`w-full py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
+                      aperturaRegistrada
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300'
+                        : 'bg-slate-900 hover:bg-slate-800 text-white'
+                    }`}
                   >
                     <Check className="w-4 h-4" />
-                    <span>Guardar Inventario Inicial de Apertura</span>
+                    <span>
+                      {aperturaRegistrada
+                        ? `Apertura inicial ya establecida (${aperturaRegistrada.referenciaDoc})`
+                        : 'Guardar Inventario Inicial de Apertura'}
+                    </span>
                   </button>
                 </div>
               </form>
