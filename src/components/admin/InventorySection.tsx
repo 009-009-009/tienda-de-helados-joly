@@ -44,7 +44,9 @@ import {
   Eye,
   SlidersHorizontal,
   X,
-  ChevronRight
+  ChevronRight,
+  Undo2,
+  RotateCcw
 } from 'lucide-react';
 import { formatCLP } from '../../utils/format';
 
@@ -173,6 +175,25 @@ export function InventorySection() {
   // ----------------------------------------------------
   const [mostrarModalReinicio, setMostrarModalReinicio] = useState(false);
   const [confirmacionTextoReinicio, setConfirmacionTextoReinicio] = useState('');
+
+  // ----------------------------------------------------
+  // MODAL DE REVERSIÓN DE AJUSTE POR CONTEO FÍSICO
+  // ----------------------------------------------------
+  const [movimientoARevertir, setMovimientoARevertir] = useState<MovimientoInventario | null>(null);
+  const [motivoReversion, setMotivoReversion] = useState('');
+  const [responsableReversion, setResponsableReversion] = useState('Encargado de Bodega');
+
+  // Identificar qué referencias de ajustes ya fueron revertidas (para evitar doble reversión)
+  const referenciasAjustesRevertidos = useMemo(() => {
+    const set = new Set<string>();
+    movimientos.forEach(m => {
+      if (m.referenciaDoc.startsWith('REV-')) {
+        const refOrig = m.referenciaDoc.replace('REV-', '');
+        set.add(refOrig);
+      }
+    });
+    return set;
+  }, [movimientos]);
 
   // ----------------------------------------------------
   // FILTROS EN TABLA DE STOCK
@@ -684,6 +705,89 @@ export function InventorySection() {
       setMensajeExitoManual(null);
       setSubTab('stock');
     }, 2500);
+  };
+
+  const handleEjecutarReversionAjuste = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!movimientoARevertir) return;
+
+    const refOriginal = movimientoARevertir.referenciaDoc;
+    if (referenciasAjustesRevertidos.has(refOriginal)) {
+      alert(`El ajuste ${refOriginal} ya fue revertido previamente.`);
+      return;
+    }
+
+    if (!motivoReversion.trim()) {
+      alert('Es obligatorio ingresar el motivo de la reversión.');
+      return;
+    }
+
+    if (!responsableReversion.trim()) {
+      alert('Es obligatorio ingresar el responsable de la reversión.');
+      return;
+    }
+
+    const itemAjuste = movimientoARevertir.items[0];
+    if (!itemAjuste) {
+      alert('No se encontró el detalle del producto en el ajuste original.');
+      return;
+    }
+
+    const prod = PRODUCTS.find(p => p.id === itemAjuste.productId);
+    if (!prod) {
+      alert('El producto del ajuste ya no figura en el catálogo.');
+      return;
+    }
+
+    const stockActualItem = stockList.find(s => s.productId === prod.id);
+    const stockActualBodega = stockActualItem?.cajasBodega || 0;
+
+    // Determinar si el ajuste original fue ingreso (sobrante) o egreso (faltante)
+    const fueSobrante = movimientoARevertir.destino === 'BODEGA_CENTRAL';
+    const cajasCompensatorias = itemAjuste.cajas;
+    const deltaStock = fueSobrante ? -cajasCompensatorias : cajasCompensatorias;
+
+    // Validación de inconsistencia: Si hay que restar cajas y no hay suficiente stock en bodega
+    if (fueSobrante && stockActualBodega < cajasCompensatorias) {
+      alert(`Inconsistencia de stock: Bodega Central actualmente cuenta con ${stockActualBodega} cj de ${prod.name}. No es posible descontar ${cajasCompensatorias} cj porque el inventario quedaría en negativo (posiblemente las cajas ya fueron despachadas o vendidas).`);
+      return;
+    }
+
+    // 1. Actualizar stockList
+    const nuevoStock = stockList.map(s => {
+      if (s.productId === prod.id) {
+        const nuevoBodega = Math.max(0, s.cajasBodega + deltaStock);
+        return {
+          ...s,
+          cajasBodega: nuevoBodega,
+          totalEmpresa: nuevoBodega + s.cajasAsignadasFurgon1 + s.cajasAsignadasFurgon2,
+          ultimaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 16)
+        };
+      }
+      return s;
+    });
+
+    // 2. Crear movimiento compensatorio
+    const movCompensatorio: MovimientoInventario = {
+      id: `MOV-REV-${Date.now()}`,
+      fecha: `${new Date().toISOString().split('T')[0]} ${new Date().toTimeString().slice(0, 5)}`,
+      tipo: 'AJUSTE_CONTEO_FISICO',
+      referenciaDoc: `REV-${refOriginal}`,
+      descripcion: `Reversión compensatoria de ${refOriginal}: ${deltaStock > 0 ? '+' : ''}${deltaStock} cj de ${prod.name}. Deshace descuadre previo. Motivo: ${motivoReversion.trim()}`,
+      responsable: responsableReversion.trim(),
+      origen: fueSobrante ? 'BODEGA_CENTRAL' : 'AJUSTE',
+      destino: fueSobrante ? 'AJUSTE' : 'BODEGA_CENTRAL',
+      totalCajas: cajasCompensatorias,
+      items: [{ productId: prod.id, productName: prod.name, cajas: cajasCompensatorias }],
+      esDemo: false
+    };
+
+    persistStock(nuevoStock);
+    persistMovimientos([movCompensatorio, ...movimientos]);
+
+    setMensajeExitoManual(`Ajuste ${refOriginal} revertido exitosamente. Compensación de ${deltaStock > 0 ? '+' : ''}${deltaStock} cj aplicada a ${prod.name}.`);
+    setMovimientoARevertir(null);
+    setMotivoReversion('');
   };
 
   const handleConfirmarMovimientoSimple = (e: React.FormEvent) => {
@@ -2134,7 +2238,8 @@ export function InventorySection() {
               const puedeAplicar = tieneProducto && tieneConteo && diff !== 0;
 
               return (
-                <form onSubmit={handleConfirmarAjusteConteo} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
+                <div className="space-y-6">
+                  <form onSubmit={handleConfirmarAjusteConteo} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
                   <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start space-x-2">
                     <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
                     <div>
@@ -2272,29 +2377,150 @@ export function InventorySection() {
                     />
                   </div>
 
-                  <div className="pt-2">
+                  {/* Mensaje orientativo de estado */}
+                  <div className={`p-3 rounded-xl text-xs flex items-center space-x-2.5 transition-all ${
+                    !tieneProducto
+                      ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                      : diff === null
+                      ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                      : diff === 0
+                      ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  }`}>
+                    <Info className="w-4 h-4 flex-shrink-0" />
+                    <span>
+                      {!tieneProducto
+                        ? 'Selecciona un producto para comenzar'
+                        : diff === null
+                        ? 'Ingresa el conteo físico real para calcular la diferencia'
+                        : diff === 0
+                        ? 'Stock cuadrado: El conteo físico coincide exactamente con el sistema (sin diferencia para ajustar)'
+                        : `Diferencia calculada: ${diff > 0 ? '+' : ''}${diff} cj. Completa el motivo y responsable para confirmar.`}
+                    </span>
+                  </div>
+
+                  <div className="pt-1 flex items-center space-x-3">
+                    {tieneProducto && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProdConteoId('');
+                          setConteoFisicoReal('');
+                          setMotivoManual('');
+                        }}
+                        className="px-4 py-2.5 font-medium rounded-lg text-sm text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 transition-all cursor-pointer whitespace-nowrap"
+                        title="Cancelar operación pendiente y limpiar formulario sin afectar inventario"
+                      >
+                        Cancelar / Limpiar
+                      </button>
+                    )}
+
                     <button
                       type="submit"
                       disabled={!puedeAplicar}
-                      className={`w-full py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
+                      className={`flex-1 py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
                         puedeAplicar
                           ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
                           : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
                       }`}
                     >
                       <Check className="w-4 h-4" />
-                      <span>
-                        {!tieneProducto
-                          ? 'Selecciona un producto para comenzar'
-                          : !tieneConteo
-                          ? 'Ingresa el conteo físico para continuar'
-                          : diff === 0
-                          ? 'Stock cuadrado (Sin diferencia para ajustar)'
-                          : 'Aplicar Ajuste por Conteo Físico'}
-                      </span>
+                      <span>Confirmar ajuste de stock</span>
                     </button>
                   </div>
                 </form>
+
+                {/* Historial de Ajustes por Conteo Físico Confirmados y Acción de Reversión */}
+                {(() => {
+                  const ajustesConteo = movimientos.filter(m => m.tipo === 'AJUSTE_CONTEO_FISICO');
+                  if (ajustesConteo.length === 0) return null;
+
+                  return (
+                    <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="w-4 h-4 text-slate-500" />
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                            Ajustes de Conteo Confirmados ({ajustesConteo.length})
+                          </h4>
+                        </div>
+                        <span className="text-[11px] text-slate-400">
+                          Historial auditable con reversión compensatoria
+                        </span>
+                      </div>
+
+                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600">
+                              <th className="py-2.5 px-3">Fecha</th>
+                              <th className="py-2.5 px-3">Ref.</th>
+                              <th className="py-2.5 px-3">Detalle / Producto</th>
+                              <th className="py-2.5 px-3 text-right">Ajuste</th>
+                              <th className="py-2.5 px-3">Responsable</th>
+                              <th className="py-2.5 px-3 text-center">Estado / Acción</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {ajustesConteo.map((mov) => {
+                              const esReversion = mov.referenciaDoc.startsWith('REV-');
+                              const yaRevertido = referenciasAjustesRevertidos.has(mov.referenciaDoc);
+                              const esIngreso = mov.destino === 'BODEGA_CENTRAL';
+
+                              return (
+                                <tr key={mov.id} className="hover:bg-slate-50/50">
+                                  <td className="py-2 px-3 text-slate-500 font-mono whitespace-nowrap">
+                                    {mov.fecha}
+                                  </td>
+                                  <td className="py-2 px-3 font-mono font-medium text-slate-700">
+                                    {mov.referenciaDoc}
+                                  </td>
+                                  <td className="py-2 px-3 text-slate-800">
+                                    {mov.descripcion}
+                                  </td>
+                                  <td className={`py-2 px-3 text-right font-bold font-mono ${
+                                    esIngreso ? 'text-emerald-700' : 'text-rose-700'
+                                  }`}>
+                                    {esIngreso ? `+${mov.totalCajas}` : `-${mov.totalCajas}`} cj
+                                  </td>
+                                  <td className="py-2 px-3 text-slate-500">
+                                    {mov.responsable}
+                                  </td>
+                                  <td className="py-2 px-3 text-center whitespace-nowrap">
+                                    {esReversion ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                        Compensación
+                                      </span>
+                                    ) : yaRevertido ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                                        ✓ Revertido
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setMovimientoARevertir(mov);
+                                          setMotivoReversion('');
+                                          setResponsableReversion(responsableManual || 'Encargado de Bodega');
+                                        }}
+                                        className="px-2.5 py-1 text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg shadow-2xs flex items-center space-x-1 mx-auto transition-all cursor-pointer"
+                                        title="Revertir este ajuste de forma compensatoria"
+                                      >
+                                        <Undo2 className="w-3 h-3" />
+                                        <span>Revertir ajuste</span>
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+                </div>
               );
             })()}
 
@@ -2493,6 +2719,7 @@ export function InventorySection() {
                     <th className="py-3 px-4 text-center">Origen $\rightarrow$ Destino</th>
                     <th className="py-3 px-4 text-right">Cajas</th>
                     <th className="py-3 px-4">Responsable</th>
+                    <th className="py-3 px-4 text-center">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -2565,12 +2792,39 @@ export function InventorySection() {
                         <td className="py-3 px-4 text-xs text-slate-500">
                           {mov.responsable}
                         </td>
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          {mov.tipo === 'AJUSTE_CONTEO_FISICO' && (
+                            mov.referenciaDoc.startsWith('REV-') ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Compensación
+                              </span>
+                            ) : referenciasAjustesRevertidos.has(mov.referenciaDoc) ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                                ✓ Revertido
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMovimientoARevertir(mov);
+                                  setMotivoReversion('');
+                                  setResponsableReversion(responsableManual || 'Encargado de Bodega');
+                                }}
+                                className="px-2.5 py-1 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg shadow-2xs inline-flex items-center space-x-1 transition-all cursor-pointer"
+                                title="Revertir este ajuste de forma compensatoria"
+                              >
+                                <Undo2 className="w-3 h-3" />
+                                <span>Revertir</span>
+                              </button>
+                            )
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                   {movimientos.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
                         Historial de movimientos limpio. No hay eventos registrados.
                       </td>
                     </tr>
@@ -2684,6 +2938,124 @@ export function InventorySection() {
           </div>
         </div>
       )}
+
+      {/* ---------------------------------------------------- */}
+      {/* MODAL: REVERSIÓN DE AJUSTE POR CONTEO FÍSICO        */}
+      {/* ---------------------------------------------------- */}
+      {movimientoARevertir && (() => {
+        const itemAjuste = movimientoARevertir.items[0];
+        const prod = itemAjuste ? PRODUCTS.find(p => p.id === itemAjuste.productId) : null;
+        const stockActualItem = prod ? stockList.find(s => s.productId === prod.id) : null;
+        const stockActualBodega = stockActualItem?.cajasBodega || 0;
+        const fueSobrante = movimientoARevertir.destino === 'BODEGA_CENTRAL';
+        const cajasCompensatorias = itemAjuste?.cajas || 0;
+        const deltaStock = fueSobrante ? -cajasCompensatorias : cajasCompensatorias;
+        const hayInconsistencia = fueSobrante && stockActualBodega < cajasCompensatorias;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl border border-slate-300 shadow-2xl max-w-lg w-full p-6 space-y-4">
+              <div className="flex items-center space-x-3 text-rose-600">
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                  <Undo2 className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900">Revertir Ajuste de Stock</h4>
+                  <p className="text-xs text-slate-500">
+                    Movimiento de compensación para {movimientoARevertir.referenciaDoc}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+                <div className="flex justify-between text-slate-600">
+                  <span>Operación original:</span>
+                  <span className="font-mono font-medium text-slate-800">{movimientoARevertir.referenciaDoc} ({movimientoARevertir.fecha})</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Producto:</span>
+                  <strong className="text-slate-900">{prod?.name || itemAjuste?.productName}</strong>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Ajuste aplicado previamente:</span>
+                  <span className={`font-bold font-mono ${fueSobrante ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {fueSobrante ? `+${cajasCompensatorias}` : `-${cajasCompensatorias}`} cj ({fueSobrante ? 'Sobrante' : 'Faltante'})
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Stock actual en Bodega Central:</span>
+                  <span className="font-bold text-slate-900">{stockActualBodega} cj</span>
+                </div>
+                <div className="border-t border-slate-200 pt-2 flex justify-between font-semibold">
+                  <span className="text-slate-700">Efecto compensatorio a aplicar:</span>
+                  <span className={`font-mono ${deltaStock > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {deltaStock > 0 ? `+${deltaStock}` : `${deltaStock}`} cj en Bodega Central
+                  </span>
+                </div>
+              </div>
+
+              {hayInconsistencia && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Inconsistencia detectada:</strong> Bodega Central cuenta con {stockActualBodega} cj de este producto. No es posible restar {cajasCompensatorias} cj porque el stock quedaría en negativo (posiblemente las cajas ya fueron despachadas a furgón o vendidas).
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleEjecutarReversionAjuste} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Motivo Obligatorio de la Reversión <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Error de digitación en conteo físico matutino"
+                    value={motivoReversion}
+                    onChange={(e) => setMotivoReversion(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Responsable de la Reversión <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={responsableReversion}
+                    onChange={(e) => setResponsableReversion(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMovimientoARevertir(null);
+                      setMotivoReversion('');
+                    }}
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={hayInconsistencia || !motivoReversion.trim() || !responsableReversion.trim()}
+                    className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white rounded-lg shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                    <span>Confirmar Reversión Compensatoria</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ---------------------------------------------------- */}
       {/* MODAL: REINICIO SEGURO DE PRUEBAS                    */}
