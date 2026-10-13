@@ -1947,7 +1947,7 @@ export function InventorySection() {
             </div>
 
             {/* Pestañas de tipos de movimiento manual */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
               <button
                 type="button"
                 onClick={() => setTipoAjusteSeleccionado('inventario_inicial')}
@@ -2049,29 +2049,6 @@ export function InventorySection() {
                 </div>
                 <div className="text-xs opacity-90 leading-tight">
                   Pérdida en cámara central únicamente
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setTipoAjusteSeleccionado('reversion_movimientos');
-                  setMovimientoSeleccionadoRevertirId('');
-                  setMotivoReversion('');
-                  setResponsableReversion(responsableManual || 'Encargado de Bodega');
-                }}
-                className={`p-3 text-left rounded-xl border transition-all ${
-                  tipoAjusteSeleccionado === 'reversion_movimientos'
-                    ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                    : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <div className="text-xs font-bold uppercase tracking-wider mb-1 flex items-center space-x-1.5">
-                  <Undo2 className="w-3.5 h-3.5 text-rose-500" />
-                  <span>6. Reversión</span>
-                </div>
-                <div className="text-xs opacity-90 leading-tight">
-                  Compensar y anular movimientos de prueba
                 </div>
               </button>
             </div>
@@ -2734,481 +2711,276 @@ export function InventorySection() {
                 : 0;
 
               return (
-                <form onSubmit={handleConfirmarMovimientoSimple} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
-                  {tipoAjusteSeleccionado === 'devolucion_externa' && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start space-x-2">
-                      <Info className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Coordinación con Cierre de Ruta:</strong> El cierre de ruta del vendedor ya reintegra automáticamente las cajas sobrantes a Bodega Central. Usa esta opción únicamente para devoluciones manuales que no hayan pasado por el cierre de ruta, evitando duplicar el conteo.
-                      </div>
-                    </div>
-                  )}
-
-                  {tipoAjusteSeleccionado === 'merma_bodega' && (
-                    <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-900 flex items-start space-x-2">
-                      <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Exclusividad de Bodega Central:</strong> Las mermas registradas por los vendedores durante sus rutas ya se descuentan en el cierre de furgón. Esta opción descuenta exclusivamente pérdidas o daños ocurridos dentro de las cámaras de bodega.
-                      </div>
-                    </div>
-                  )}
-
-                  {tipoAjusteSeleccionado === 'ingreso_extraordinario' && (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 flex items-start space-x-2">
-                      <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Ingreso Extraordinario:</strong> Para ingresos legítimos que no provienen de una factura de compra habitual (ej: bonificaciones de proveedor, muestras recuperadas).
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Producto
-                    </label>
-                    <select
-                      value={prodSimpleId}
-                      onChange={(e) => {
-                        setProdSimpleId(e.target.value);
-                        setCajasSimple('');
-                      }}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                    >
-                      <option value="">-- Selecciona un producto a registrar --</option>
-                      {PRODUCTS.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.categoryName})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {!tieneProducto ? (
-                    <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500">
-                      Selecciona un producto del catálogo para habilitar los campos y registrar el movimiento.
-                    </div>
-                  ) : (
-                    <>
-                      {/* Resumen de stock actual en bodega del producto elegido */}
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
-                        <span className="text-slate-600 font-medium">Stock actual en Bodega Central:</span>
-                        <span className="font-bold text-slate-900">{stockBodega} cj</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-6">
+                  <form onSubmit={handleConfirmarMovimientoSimple} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
+                    {tipoAjusteSeleccionado === 'devolucion_externa' && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start space-x-2">
+                        <Info className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                            {tipoAjusteSeleccionado === 'merma_bodega' ? 'Cajas a Descontar (-)' : 'Cajas a Ingresar (+)'} <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="Ej: 5"
-                            value={cajasSimple}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === '') setCajasSimple('');
-                              else setCajasSimple(Math.max(1, parseInt(val, 10) || 1));
-                            }}
-                            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-right font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                            Fecha del Movimiento
-                          </label>
-                          <input
-                            type="date"
-                            value={fechaManual}
-                            onChange={(e) => setFechaManual(e.target.value)}
-                            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                          />
+                          <strong>Coordinación con Cierre de Ruta:</strong> El cierre de ruta del vendedor ya reintegra automáticamente las cajas sobrantes a Bodega Central. Usa esta opción únicamente para devoluciones manuales que no hayan pasado por el cierre de ruta, evitando duplicar el conteo.
                         </div>
                       </div>
+                    )}
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                          Motivo o Justificación Obligatoria <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={
-                            tipoAjusteSeleccionado === 'merma_bodega'
-                              ? 'Ej: Rotura de empaque por caída en cámara 1'
-                              : tipoAjusteSeleccionado === 'devolucion_externa'
-                              ? 'Ej: Cajas devueltas por cliente tras evento, aptas para reventa'
-                              : 'Ej: Bonificación adicional entregada por fábrica Lonquén'
-                          }
-                          value={motivoManual}
-                          onChange={(e) => setMotivoManual(e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                        />
+                    {tipoAjusteSeleccionado === 'merma_bodega' && (
+                      <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-900 flex items-start space-x-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Exclusividad de Bodega Central:</strong> Las mermas registradas por los vendedores durante sus rutas ya se descuentan en el cierre de furgón. Esta opción descuenta exclusivamente pérdidas o daños ocurridos dentro de las cámaras de bodega.
+                        </div>
                       </div>
+                    )}
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                          {tipoAjusteSeleccionado === 'ingreso_extraordinario'
-                            ? 'Responsable del Ingreso Extraordinario'
-                            : tipoAjusteSeleccionado === 'devolucion_externa'
-                            ? 'Responsable de la Devolución'
-                            : tipoAjusteSeleccionado === 'merma_bodega'
-                            ? 'Responsable de la Merma'
-                            : 'Responsable'} <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ej: Encargado de Bodega"
-                          value={responsableManual}
-                          onChange={(e) => setResponsableManual(e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                        />
+                    {tipoAjusteSeleccionado === 'ingreso_extraordinario' && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 flex items-start space-x-2">
+                        <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Ingreso Extraordinario:</strong> Para ingresos legítimos que no provienen de una factura de compra habitual (ej: bonificaciones de proveedor, muestras recuperadas).
+                        </div>
                       </div>
+                    )}
 
-                      <div className="pt-2">
-                        <button
-                          type="submit"
-                          disabled={!cajasSimple || typeof cajasSimple !== 'number' || cajasSimple <= 0 || !motivoManual.trim() || !responsableManual.trim()}
-                          className={`w-full py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
-                            cajasSimple && typeof cajasSimple === 'number' && cajasSimple > 0 && motivoManual.trim() && responsableManual.trim()
-                              ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
-                              : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
-                          }`}
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>
-                            {tipoAjusteSeleccionado === 'ingreso_extraordinario'
-                              ? 'Confirmar ingreso extraordinario'
-                              : tipoAjusteSeleccionado === 'devolucion_externa'
-                              ? 'Confirmar devolución externa'
-                              : tipoAjusteSeleccionado === 'merma_bodega'
-                              ? 'Confirmar merma en bodega'
-                              : 'Registrar Movimiento en Inventario'}
-                          </span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </form>
-              );
-            })()}
-
-            {/* Sub-formulario 6: CAJÓN DE REVERSIÓN DE MOVIMIENTOS DE PRUEBA */}
-            {tipoAjusteSeleccionado === 'reversion_movimientos' && (() => {
-              // Movimientos candidatos a ser revertidos (excluye reversiones que ya son compensaciones REV-)
-              const movimientosCandidatos = ordenarMovimientosCronologico(
-                movimientos.filter(m => !m.referenciaDoc.startsWith('REV-') && !m.esDemo)
-              );
-
-              const movSeleccionado = movimientosCandidatos.find(m => m.id === movimientoSeleccionadoRevertirId);
-              const yaRevertido = movSeleccionado ? referenciasAjustesRevertidos.has(movSeleccionado.referenciaDoc) : false;
-              const fueIngreso = movSeleccionado ? movSeleccionado.destino === 'BODEGA_CENTRAL' : false;
-
-              // Verificar si hay stock suficiente en Bodega Central para aplicar descuento si fue ingreso
-              let inconsistenciaStock = false;
-              let mensajeInconsistencia = '';
-              if (movSeleccionado && fueIngreso && !yaRevertido) {
-                for (const it of movSeleccionado.items) {
-                  const stockActual = stockList.find(s => s.productId === it.productId);
-                  const actualBodega = stockActual?.cajasBodega || 0;
-                  if (actualBodega < it.cajas) {
-                    inconsistenciaStock = true;
-                    mensajeInconsistencia = `Bodega Central cuenta actualmente con ${actualBodega} cj de ${it.productName}. No es posible descontar ${it.cajas} cj porque el stock quedaría en negativo.`;
-                    break;
-                  }
-                }
-              }
-
-              const puedeRevertir = Boolean(
-                movSeleccionado &&
-                !yaRevertido &&
-                !inconsistenciaStock &&
-                motivoReversion.trim() &&
-                responsableReversion.trim()
-              );
-
-              return (
-                <div className="space-y-6 border-t border-slate-200 pt-5">
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 flex items-start space-x-3">
-                    <Undo2 className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <strong className="text-slate-900 block font-bold">
-                        Cajón de Reversión de Movimientos de Prueba:
-                      </strong>
-                      <p className="text-slate-600 leading-relaxed">
-                        Selecciona un movimiento aplicado para anular su efecto mediante un movimiento compensatorio exacto en Bodega Central. Se conservará el registro original en la auditoría unificada, se creará el movimiento con folio <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[11px] text-slate-800">REV-...</code> y se impedirá revertir dos veces la misma operación.
-                      </p>
-                    </div>
-                  </div>
-
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!movSeleccionado) return;
-                      ejecutarReversionMovimiento(movSeleccionado, motivoReversion, responsableReversion);
-                    }}
-                    className="space-y-4 max-w-xl"
-                  >
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                        Seleccionar Movimiento a Revertir <span className="text-rose-500">*</span>
+                        Producto
                       </label>
                       <select
-                        value={movimientoSeleccionadoRevertirId}
+                        value={prodSimpleId}
                         onChange={(e) => {
-                          setMovimientoSeleccionadoRevertirId(e.target.value);
-                          setMotivoReversion('');
-                          setResponsableReversion(responsableManual || 'Encargado de Bodega');
+                          setProdSimpleId(e.target.value);
+                          setCajasSimple('');
                         }}
                         className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
                       >
-                        <option value="">-- Selecciona el movimiento registrado a revertir --</option>
-                        {movimientosCandidatos.map(m => {
-                          const rev = referenciasAjustesRevertidos.has(m.referenciaDoc);
-                          const esEntrada = m.destino === 'BODEGA_CENTRAL';
-                          const detalleProd = m.items[0]?.productName || m.descripcion;
-                          return (
-                            <option key={m.id} value={m.id}>
-                              {rev ? '✓ [REVERTIDO] ' : '● [VIGENTE] '}
-                              {m.fecha} | {m.referenciaDoc} | {esEntrada ? '+' : '−'}{m.totalCajas} cj ({detalleProd})
-                            </option>
-                          );
-                        })}
+                        <option value="">-- Selecciona un producto a registrar --</option>
+                        {PRODUCTS.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.categoryName})
+                          </option>
+                        ))}
                       </select>
                     </div>
 
-                    {!movSeleccionado ? (
+                    {!tieneProducto ? (
                       <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500">
-                        Elige un movimiento del selector superior para revisar sus detalles y preparar la compensación.
+                        Selecciona un producto del catálogo para habilitar los campos y registrar el movimiento.
                       </div>
                     ) : (
                       <>
-                        {/* Ficha del movimiento seleccionado */}
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                            <div>
-                              <span className="font-mono font-bold text-slate-900 text-sm">
-                                {movSeleccionado.referenciaDoc}
-                              </span>
-                              <span className="text-slate-500 ml-2">({movSeleccionado.fecha})</span>
-                            </div>
-                            {yaRevertido ? (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
-                                ✓ Ya Revertido
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                                ● Vigente
-                              </span>
-                            )}
+                        {/* Resumen de stock actual en bodega del producto elegido */}
+                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                          <span className="text-slate-600 font-medium">Stock actual en Bodega Central:</span>
+                          <span className="font-bold text-slate-900">{stockBodega} cj</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                              {tipoAjusteSeleccionado === 'merma_bodega' ? 'Cajas a Descontar (-)' : 'Cajas a Ingresar (+)'} <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="Ej: 5"
+                              value={cajasSimple}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '') setCajasSimple('');
+                                else setCajasSimple(Math.max(1, parseInt(val, 10) || 1));
+                              }}
+                              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-right font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
+                            />
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-slate-600">
-                            <div>
-                              <span className="font-semibold text-slate-700">Tipo original:</span>{' '}
-                              <span>{movSeleccionado.tipo.replace(/_/g, ' ')}</span>
-                            </div>
-                            <div>
-                              <span className="font-semibold text-slate-700">Responsable original:</span>{' '}
-                              <span>{movSeleccionado.responsable}</span>
-                            </div>
-                            <div className="col-span-2">
-                              <span className="font-semibold text-slate-700">Descripción:</span>{' '}
-                              <span>{movSeleccionado.descripcion}</span>
-                            </div>
-                            <div className="col-span-2">
-                              <span className="font-semibold text-slate-700">Cajas registradas:</span>{' '}
-                              <strong className={fueIngreso ? 'text-emerald-700' : 'text-rose-700'}>
-                                {fueIngreso ? `+${movSeleccionado.totalCajas} cj (Ingreso a Bodega)` : `−${movSeleccionado.totalCajas} cj (Salida de Bodega)`}
-                              </strong>
-                            </div>
-                          </div>
-
-                          {/* Efecto compensatorio proyectado */}
-                          <div className={`p-3 rounded-lg border text-xs font-medium ${
-                            yaRevertido
-                              ? 'bg-slate-100 border-slate-200 text-slate-600'
-                              : fueIngreso
-                              ? 'bg-rose-50 border-rose-200 text-rose-800'
-                              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                          }`}>
-                            {yaRevertido ? (
-                              <div>
-                                <strong>Operación finalizada:</strong> Este movimiento ya cuenta con una reversión registrada en la auditoría. No se puede revertir por segunda vez.
-                              </div>
-                            ) : (
-                              <div>
-                                <strong>Efecto compensatorio al confirmar:</strong> Se aplicará{' '}
-                                <strong>{fueIngreso ? `descuento de −${movSeleccionado.totalCajas} cj` : `reintegro de +${movSeleccionado.totalCajas} cj`}</strong>{' '}
-                                en Bodega Central para compensar exactamente el stock.
-                              </div>
-                            )}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                              Fecha del Movimiento
+                            </label>
+                            <input
+                              type="date"
+                              value={fechaManual}
+                              onChange={(e) => setFechaManual(e.target.value)}
+                              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                            />
                           </div>
                         </div>
 
-                        {inconsistenciaStock && (
-                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
-                            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <strong>Inconsistencia detectada:</strong> {mensajeInconsistencia}
-                            </div>
-                          </div>
-                        )}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                            Motivo o Justificación Obligatoria <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={
+                              tipoAjusteSeleccionado === 'merma_bodega'
+                                ? 'Ej: Rotura de empaque por caída en cámara 1'
+                                : tipoAjusteSeleccionado === 'devolucion_externa'
+                                ? 'Ej: Cajas devueltas por cliente tras evento, aptas para reventa'
+                                : 'Ej: Bonificación adicional entregada por fábrica Lonquén'
+                            }
+                            value={motivoManual}
+                            onChange={(e) => setMotivoManual(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                          />
+                        </div>
 
-                        {!yaRevertido && (
-                          <>
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                                Motivo Obligatorio de la Reversión <span className="text-rose-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                required
-                                placeholder="Ej: Anulación de prueba de ingreso extraordinario"
-                                value={motivoReversion}
-                                onChange={(e) => setMotivoReversion(e.target.value)}
-                                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                              />
-                            </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                            {tipoAjusteSeleccionado === 'ingreso_extraordinario'
+                              ? 'Responsable del Ingreso Extraordinario'
+                              : tipoAjusteSeleccionado === 'devolucion_externa'
+                              ? 'Responsable de la Devolución'
+                              : tipoAjusteSeleccionado === 'merma_bodega'
+                              ? 'Responsable de la Merma'
+                              : 'Responsable'} <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ej: Encargado de Bodega"
+                            value={responsableManual}
+                            onChange={(e) => setResponsableManual(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
+                          />
+                        </div>
 
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                                Responsable de la Reversión <span className="text-rose-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                required
-                                value={responsableReversion}
-                                onChange={(e) => setResponsableReversion(e.target.value)}
-                                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
-                              />
-                            </div>
+                        <div className="pt-2 flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProdSimpleId('');
+                              setCajasSimple('');
+                              setMotivoManual('');
+                            }}
+                            className="px-4 py-2.5 font-medium rounded-lg text-sm text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 transition-all cursor-pointer whitespace-nowrap"
+                            title="Limpiar formulario antes de confirmar"
+                          >
+                            Cancelar / Limpiar
+                          </button>
 
-                            <div className="pt-2 flex items-center space-x-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMovimientoSeleccionadoRevertirId('');
-                                  setMotivoReversion('');
-                                }}
-                                className="px-4 py-2.5 font-medium rounded-lg text-sm text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 transition-all cursor-pointer"
-                              >
-                                Cancelar selección
-                              </button>
-
-                              <button
-                                type="submit"
-                                disabled={!puedeRevertir}
-                                className={`flex-1 py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
-                                  puedeRevertir
-                                    ? 'bg-rose-600 hover:bg-rose-700 text-white cursor-pointer'
-                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
-                                }`}
-                              >
-                                <Undo2 className="w-4 h-4" />
-                                <span>Confirmar Reversión Compensatoria</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
+                          <button
+                            type="submit"
+                            disabled={!cajasSimple || typeof cajasSimple !== 'number' || cajasSimple <= 0 || !motivoManual.trim() || !responsableManual.trim()}
+                            className={`flex-1 py-2.5 font-semibold rounded-lg text-sm shadow-sm transition-all flex items-center justify-center space-x-2 ${
+                              cajasSimple && typeof cajasSimple === 'number' && cajasSimple > 0 && motivoManual.trim() && responsableManual.trim()
+                                ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                            }`}
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>
+                              {tipoAjusteSeleccionado === 'ingreso_extraordinario'
+                                ? 'Confirmar ingreso extraordinario'
+                                : tipoAjusteSeleccionado === 'devolucion_externa'
+                                ? 'Confirmar devolución externa'
+                                : tipoAjusteSeleccionado === 'merma_bodega'
+                                ? 'Confirmar merma en bodega'
+                                : 'Registrar Movimiento en Inventario'}
+                            </span>
+                          </button>
+                        </div>
                       </>
                     )}
                   </form>
 
-                  {/* Tabla de movimientos con estado Vigente vs Revertido */}
-                  <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-slate-500" />
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                          Movimientos de Prueba Registrados ({movimientosCandidatos.length})
-                        </h4>
-                      </div>
-                      <span className="text-[11px] text-slate-400">
-                        Vigencia y trazabilidad de reversiones
-                      </span>
-                    </div>
+                  {/* Historial de Ingresos Extraordinarios Confirmados y Acción de Reversión */}
+                  {tipoAjusteSeleccionado === 'ingreso_extraordinario' && (() => {
+                    const ingresosExtraordinarios = ordenarMovimientosCronologico(
+                      movimientos.filter(m => m.tipo === 'INGRESO_EXTRAORDINARIO')
+                    );
+                    if (ingresosExtraordinarios.length === 0) return null;
 
-                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600">
-                            <th className="py-2.5 px-3">Fecha y Hora</th>
-                            <th className="py-2.5 px-3">Ref.</th>
-                            <th className="py-2.5 px-3">Detalle del Movimiento</th>
-                            <th className="py-2.5 px-3 text-right">Cajas</th>
-                            <th className="py-2.5 px-3">Responsable</th>
-                            <th className="py-2.5 px-3 text-center">Estado / Acción</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 bg-white">
-                          {movimientosCandidatos.map((mov) => {
-                            const rev = referenciasAjustesRevertidos.has(mov.referenciaDoc);
-                            const esIngreso = mov.destino === 'BODEGA_CENTRAL';
-                            const seleccionado = mov.id === movimientoSeleccionadoRevertirId;
+                    return (
+                      <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="w-4 h-4 text-slate-500" />
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                              Ingresos Extraordinarios Confirmados ({ingresosExtraordinarios.length})
+                            </h4>
+                          </div>
+                          <span className="text-[11px] text-slate-400">
+                            Historial ordenado cronológicamente con reversión compensatoria
+                          </span>
+                        </div>
 
-                            return (
-                              <tr key={mov.id} className={`hover:bg-slate-50/50 ${seleccionado ? 'bg-amber-50/40' : ''}`}>
-                                <td className="py-2 px-3 text-slate-500 font-mono whitespace-nowrap">
-                                  {mov.fecha}
-                                </td>
-                                <td className="py-2 px-3 font-mono font-medium text-slate-700">
-                                  {mov.referenciaDoc}
-                                </td>
-                                <td className="py-2 px-3 text-slate-800 max-w-xs truncate" title={mov.descripcion}>
-                                  {mov.descripcion}
-                                </td>
-                                <td className="py-2 px-3 text-right whitespace-nowrap font-mono font-bold">
-                                  {esIngreso ? (
-                                    <span className="inline-block px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      +{mov.totalCajas} cj
-                                    </span>
-                                  ) : (
-                                    <span className="inline-block px-2 py-0.5 rounded text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                      −{mov.totalCajas} cj
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3 text-slate-500">
-                                  {mov.responsable}
-                                </td>
-                                <td className="py-2 px-3 text-center whitespace-nowrap">
-                                  {rev ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
-                                      ✓ Revertido
-                                    </span>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setMovimientoSeleccionadoRevertirId(mov.id);
-                                        setMotivoReversion('');
-                                        setResponsableReversion(responsableManual || 'Encargado de Bodega');
-                                        window.scrollTo({ top: 300, behavior: 'smooth' });
-                                      }}
-                                      className="px-2.5 py-1 text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg shadow-2xs flex items-center space-x-1 mx-auto transition-all cursor-pointer"
-                                      title="Seleccionar para revertir este movimiento"
-                                    >
-                                      <Undo2 className="w-3 h-3" />
-                                      <span>Revertir</span>
-                                    </button>
-                                  )}
-                                </td>
+                        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600">
+                                <th className="py-2.5 px-3">Fecha</th>
+                                <th className="py-2.5 px-3">Ref.</th>
+                                <th className="py-2.5 px-3">Detalle / Producto</th>
+                                <th className="py-2.5 px-3 text-right">Cantidad</th>
+                                <th className="py-2.5 px-3">Responsable</th>
+                                <th className="py-2.5 px-3 text-center">Estado / Acción</th>
                               </tr>
-                            );
-                          })}
-                          {movimientosCandidatos.length === 0 && (
-                            <tr>
-                              <td colSpan={6} className="py-6 text-center text-slate-400">
-                                No hay movimientos de prueba registrados para revertir.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                              {ingresosExtraordinarios.map((mov) => {
+                                const esReversion = mov.referenciaDoc.startsWith('REV-');
+                                const yaRevertido = referenciasAjustesRevertidos.has(mov.referenciaDoc);
+                                const esIngreso = mov.destino === 'BODEGA_CENTRAL';
+
+                                return (
+                                  <tr key={mov.id} className="hover:bg-slate-50/50">
+                                    <td className="py-2 px-3 text-slate-500 font-mono whitespace-nowrap">
+                                      {mov.fecha}
+                                    </td>
+                                    <td className="py-2 px-3 font-mono font-medium text-slate-700">
+                                      {mov.referenciaDoc}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-800">
+                                      {mov.descripcion}
+                                    </td>
+                                    <td className="py-2 px-3 text-right whitespace-nowrap font-mono font-bold">
+                                      {esIngreso ? (
+                                        <span className="inline-block px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                          +{mov.totalCajas} cj
+                                        </span>
+                                      ) : (
+                                        <span className="inline-block px-2 py-0.5 rounded text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                          −{mov.totalCajas} cj
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-500">
+                                      {mov.responsable}
+                                    </td>
+                                    <td className="py-2 px-3 text-center whitespace-nowrap">
+                                      {esReversion ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                          Compensación
+                                        </span>
+                                      ) : yaRevertido ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                                          ✓ Revertido
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setMovimientoARevertir(mov);
+                                            setMotivoReversion('');
+                                            setResponsableReversion(responsableManual || 'Encargado de Bodega');
+                                          }}
+                                          className="px-2.5 py-1 text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg shadow-2xs flex items-center space-x-1 mx-auto transition-all cursor-pointer"
+                                          title="Revertir este ingreso extraordinario de forma compensatoria"
+                                        >
+                                          <Undo2 className="w-3 h-3" />
+                                          <span>Revertir ingreso</span>
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -3665,7 +3437,11 @@ export function InventorySection() {
                   <Undo2 className="w-5 h-5 text-rose-600" />
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-slate-900">Revertir Ajuste de Stock</h4>
+                  <h4 className="text-base font-bold text-slate-900">
+                    {movimientoARevertir.tipo === 'INGRESO_EXTRAORDINARIO'
+                      ? 'Revertir Ingreso Extraordinario'
+                      : 'Revertir Ajuste de Stock'}
+                  </h4>
                   <p className="text-xs text-slate-500">
                     Movimiento de compensación para {movimientoARevertir.referenciaDoc}
                   </p>
@@ -3682,9 +3458,9 @@ export function InventorySection() {
                   <strong className="text-slate-900">{prod?.name || itemAjuste?.productName}</strong>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Ajuste aplicado previamente:</span>
+                  <span>{movimientoARevertir.tipo === 'INGRESO_EXTRAORDINARIO' ? 'Ingreso aplicado previamente:' : 'Ajuste aplicado previamente:'}</span>
                   <span className={`font-bold font-mono ${fueSobrante ? 'text-emerald-700' : 'text-rose-700'}`}>
-                    {fueSobrante ? `+${cajasCompensatorias}` : `-${cajasCompensatorias}`} cj ({fueSobrante ? 'Sobrante' : 'Faltante'})
+                    {fueSobrante ? `+${cajasCompensatorias}` : `-${cajasCompensatorias}`} cj ({fueSobrante ? (movimientoARevertir.tipo === 'INGRESO_EXTRAORDINARIO' ? 'Ingreso' : 'Sobrante') : 'Faltante'})
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-600">
@@ -3716,7 +3492,11 @@ export function InventorySection() {
                   <input
                     type="text"
                     required
-                    placeholder="Ej: Error de digitación en conteo físico matutino"
+                    placeholder={
+                      movimientoARevertir.tipo === 'INGRESO_EXTRAORDINARIO'
+                        ? 'Ej: Error de digitación en cantidad de ingreso extraordinario'
+                        : 'Ej: Error de digitación en conteo físico matutino'
+                    }
                     value={motivoReversion}
                     onChange={(e) => setMotivoReversion(e.target.value)}
                     className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-800"
