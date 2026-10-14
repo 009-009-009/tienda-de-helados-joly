@@ -994,6 +994,16 @@ export function InventorySection() {
     let descTipo = 'Ingreso extraordinario';
 
     if (tipoAjusteSeleccionado === 'merma_bodega') {
+      const stockItem = stockList.find(s => s.productId === prod.id);
+      const stockDisponibleBodega = stockItem ? stockItem.cajasBodega : 0;
+
+      if (cajasSimple > stockDisponibleBodega) {
+        alert(
+          `Stock insuficiente en Bodega Central: actualmente hay ${stockDisponibleBodega} cj de ${prod.name}. No es posible registrar una merma de ${cajasSimple} cj porque el inventario no puede quedar en negativo.`
+        );
+        return;
+      }
+
       deltaCajas = -Math.abs(cajasSimple);
       movTipo = 'AJUSTE_MERMA_BODEGA';
       origen = 'BODEGA_CENTRAL';
