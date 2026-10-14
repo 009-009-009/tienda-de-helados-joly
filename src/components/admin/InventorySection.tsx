@@ -2738,7 +2738,7 @@ export function InventorySection() {
                       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start space-x-2">
                         <Info className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
                         <div>
-                          <strong>Coordinación con Cierre de Ruta:</strong> El cierre de ruta del vendedor ya reintegra automáticamente las cajas sobrantes a Bodega Central. Usa esta opción únicamente para devoluciones manuales que no hayan pasado por el cierre de ruta, evitando duplicar el conteo.
+                          <strong>Control de devoluciones:</strong> Los sobrantes declarados en el Cierre de Ruta se gestionarán por separado en el cajón 4.2, una vez conectados ambos módulos. Mientras esa conexión esté pendiente, registra aquí únicamente las devoluciones externas manuales que correspondan. Cada ingreso al inventario debe registrarse según la cantidad efectivamente recibida, evitando duplicar movimientos.
                         </div>
                       </div>
                     )}
