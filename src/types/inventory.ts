@@ -86,6 +86,29 @@ export interface IngresoManualDoc {
   esDemo: boolean;
 }
 
+export interface ItemSobranteRuta {
+  productId: string;
+  productName: string;
+  cajasDeclaradas: number;
+  cajasRecibidas?: number;
+  diferencia?: number;
+}
+
+export interface SobranteRutaPendiente {
+  id: string;
+  vendedorId: string;
+  vendedorNombre: string;
+  cierreRutaId: string;
+  movil: string;
+  fechaHoraCierre: string;
+  items: ItemSobranteRuta[];
+  totalCajasDeclaradas: number;
+  totalCajasRecibidas?: number;
+  estado: 'pendiente_revision_fisica' | 'recepcionado' | 'rechazado';
+  observaciones?: string;
+  responsableBodega?: string;
+}
+
 export interface MovimientoInventario {
   id: string;
   fecha: string;

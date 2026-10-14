@@ -6,7 +6,8 @@ import {
   RecepcionFacturaDoc, 
   ItemRecepcionFactura,
   TipoAjusteManual,
-  ItemAjusteManual
+  ItemAjusteManual,
+  SobranteRutaPendiente
 } from '../../types/inventory';
 import { 
   STOCK_BASE_INICIAL_LIMPIO,
@@ -47,7 +48,8 @@ import {
   ChevronRight,
   Undo2,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  Truck
 } from 'lucide-react';
 import { formatCLP } from '../../utils/format';
 
@@ -170,6 +172,9 @@ export function InventorySection() {
   // Sub-estado: Ingreso extraordinario, Devolución o Merma
   const [prodSimpleId, setProdSimpleId] = useState<string>('');
   const [cajasSimple, setCajasSimple] = useState<number | ''>('');
+
+  // Cajón 4.2: Sobrantes de Ruta Pendientes de Recepción Física (inicia vacío sin datos simulados)
+  const [sobrantesRutaPendientes] = useState<SobranteRutaPendiente[]>([]);
 
   // ----------------------------------------------------
   // MODAL DE REINICIO SEGURO
@@ -2712,6 +2717,22 @@ export function InventorySection() {
 
               return (
                 <div className="space-y-6">
+                  {tipoAjusteSeleccionado === 'devolucion_externa' && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-900 text-white font-mono">
+                          4.1
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">
+                          Devolución Externa Manual
+                        </h4>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        Recepción directa e inmediata de producto retornado fuera de ruta
+                      </span>
+                    </div>
+                  )}
+
                   <form onSubmit={handleConfirmarMovimientoSimple} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
                     {tipoAjusteSeleccionado === 'devolucion_externa' && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start space-x-2">
@@ -2882,6 +2903,102 @@ export function InventorySection() {
                       </>
                     )}
                   </form>
+
+                  {/* Cajón 4.2: SOBRANTES DE RUTA — PENDIENTES DE RECEPCIÓN */}
+                  {tipoAjusteSeleccionado === 'devolucion_externa' && (
+                    <div className="mt-10 pt-6 border-t-2 border-slate-200 space-y-4">
+                      {/* Encabezado del Cajón 4.2 */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 flex-shrink-0">
+                            <Truck className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-700 text-white font-mono">
+                                4.2
+                              </span>
+                              <h4 className="text-sm font-bold text-slate-900">
+                                Sobrantes de Ruta — Pendientes de Recepción
+                              </h4>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Recepción física y contrastación de cajas declaradas por vendedores al finalizar su Cierre de Ruta.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 self-start sm:self-auto">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            0 cierres pendientes
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Contenedor del estado vacío profesional */}
+                      <div className="border border-slate-200 rounded-xl p-6 bg-white space-y-5">
+                        <div className="text-center max-w-lg mx-auto py-3">
+                          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                            <Truck className="w-6 h-6" />
+                          </div>
+                          <h5 className="text-sm font-semibold text-slate-800 mb-1">
+                            Bandeja de recepción en espera: No hay sobrantes de ruta pendientes
+                          </h5>
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            Cuando los vendedores envíen su Cierre de Ruta desde el móvil, aquí se listarán automáticamente las cajas sobrantes declaradas por cada móvil para su conteo físico en Bodega Central.
+                          </p>
+                        </div>
+
+                        {/* Nota de control físico e inventario */}
+                        <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start space-x-2.5">
+                          <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <strong className="block text-amber-950 font-semibold">
+                              Regla de control físico de inventario:
+                            </strong>
+                            <p className="text-amber-900 leading-relaxed">
+                              El inventario de Bodega Central <strong>no se incrementará con la sola declaración del vendedor</strong>. El encargado de bodega deberá cotejar físicamente las cajas recibidas en andén, registrar la cantidad real, detallar las diferencias si las hubiera y confirmar la recepción. Solo en ese momento se actualizará el stock.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Estructura preparada para el flujo de Cierre de Ruta */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                          <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span className="flex items-center space-x-1.5">
+                              <span>Estructura preparada para Cierre de Ruta</span>
+                              <span className="text-[10px] text-slate-400 font-normal">(en espera de conexión de datos)</span>
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                              Confirmación diferida por bodega
+                            </span>
+                          </div>
+
+                          <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-600">
+                                  <th className="py-2.5 px-3">Vendedor y Móvil</th>
+                                  <th className="py-2.5 px-3">Cierre de Ruta</th>
+                                  <th className="py-2.5 px-3 text-center">Cajas Declaradas</th>
+                                  <th className="py-2.5 px-3 text-center">Cajas Recibidas</th>
+                                  <th className="py-2.5 px-3 text-center">Diferencia</th>
+                                  <th className="py-2.5 px-3 text-center">Estado / Validación</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td colSpan={6} className="py-6 text-center text-xs text-slate-400 italic">
+                                    Sin cierres de ruta recibidos en cola de espera. No se aplicarán movimientos de stock hasta la recepción física real.
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Historial de Ingresos Extraordinarios Confirmados y Acción de Reversión */}
                   {tipoAjusteSeleccionado === 'ingreso_extraordinario' && (() => {
