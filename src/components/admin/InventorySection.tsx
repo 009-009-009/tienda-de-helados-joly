@@ -2743,6 +2743,22 @@ export function InventorySection() {
                     </div>
                   )}
 
+                  {tipoAjusteSeleccionado === 'merma_bodega' && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-900 text-white font-mono">
+                          5.1
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">
+                          Merma de Bodega Manual
+                        </h4>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        Registro y descuento directo de pérdidas o averías ocurridas en Bodega Central
+                      </span>
+                    </div>
+                  )}
+
                   <form onSubmit={handleConfirmarMovimientoSimple} className="space-y-4 border-t border-slate-200 pt-5 max-w-xl">
                     {tipoAjusteSeleccionado === 'devolucion_externa' && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start space-x-2">
@@ -2757,7 +2773,7 @@ export function InventorySection() {
                       <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-900 flex items-start space-x-2">
                         <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <strong>Exclusividad de Bodega Central:</strong> Las mermas registradas por los vendedores durante sus rutas ya se descuentan en el cierre de furgón. Esta opción descuenta exclusivamente pérdidas o daños ocurridos dentro de las cámaras de bodega.
+                          <strong>Exclusividad de Bodega Central:</strong> Registra aquí únicamente las mermas, averías o vencimientos ocurridos físicamente dentro de las cámaras y pasillos de Bodega Central. Las pérdidas o daños reportados por los vendedores durante sus rutas se gestionarán por separado en el apartado 5.2, una vez conectados ambos módulos, evitando duplicar descuentos.
                         </div>
                       </div>
                     )}
@@ -3000,6 +3016,102 @@ export function InventorySection() {
                                 <tr>
                                   <td colSpan={6} className="py-6 text-center text-xs text-slate-400 italic">
                                     Sin cierres de ruta recibidos en cola de espera. No se aplicarán movimientos de stock hasta la recepción física real.
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cajón 5.2: MERMAS DECLARADAS POR LOS VENDEDORES — EN RUTA */}
+                  {tipoAjusteSeleccionado === 'merma_bodega' && (
+                    <div className="mt-10 pt-6 border-t-2 border-slate-200 space-y-4">
+                      {/* Encabezado del Cajón 5.2 */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700 flex-shrink-0">
+                            <AlertTriangle className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-700 text-white font-mono">
+                                5.2
+                              </span>
+                              <h4 className="text-sm font-bold text-slate-900">
+                                Mermas Declaradas por los Vendedores — En Ruta
+                              </h4>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Auditoría, revisión y control de mermas reportadas por los vendedores en sus furgones al cerrar su ruta.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 self-start sm:self-auto">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            0 mermas en ruta pendientes
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Contenedor del estado vacío profesional */}
+                      <div className="border border-slate-200 rounded-xl p-6 bg-white space-y-5">
+                        <div className="text-center max-w-lg mx-auto py-3">
+                          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                            <AlertTriangle className="w-6 h-6" />
+                          </div>
+                          <h5 className="text-sm font-semibold text-slate-800 mb-1">
+                            Bandeja de auditoría en espera: No hay mermas de ruta reportadas
+                          </h5>
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            Cuando los vendedores declaren mermas o roturas durante el Cierre de Ruta desde el móvil, aquí se listarán para su revisión y cruce de responsabilidades administrativas.
+                          </p>
+                        </div>
+
+                        {/* Nota de control de inventario y no duplicación */}
+                        <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start space-x-2.5">
+                          <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <strong className="block text-amber-950 font-semibold">
+                              Regla de control y no duplicación de descuento:
+                            </strong>
+                            <p className="text-amber-900 leading-relaxed">
+                              Las mermas declaradas en ruta se gestionarán mediante la futura conexión con el módulo Cierre de Ruta. <strong>Esta bandeja no debe generar un segundo descuento de las cajas ya descontadas del furgón</strong>, garantizando que el stock de Bodega Central no sufra mermas duplicadas.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Estructura preparada para el flujo de Cierre de Ruta */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                          <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span className="flex items-center space-x-1.5">
+                              <span>Estructura preparada para Cierre de Ruta</span>
+                              <span className="text-[10px] text-slate-400 font-normal">(en espera de conexión de datos)</span>
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                              Auditoría sin alteración de Bodega Central
+                            </span>
+                          </div>
+
+                          <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-slate-100/70 border-b border-slate-200 text-[11px] font-semibold text-slate-600">
+                                  <th className="py-2.5 px-3">Vendedor y Móvil</th>
+                                  <th className="py-2.5 px-3">Cierre de Ruta</th>
+                                  <th className="py-2.5 px-3">Producto Afectado</th>
+                                  <th className="py-2.5 px-3 text-center">Cajas Merma en Ruta</th>
+                                  <th className="py-2.5 px-3">Motivo / Causa Declarada</th>
+                                  <th className="py-2.5 px-3 text-center">Estado / Auditoría</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td colSpan={6} className="py-6 text-center text-xs text-slate-400 italic">
+                                    Sin mermas de ruta reportadas en cola de auditoría. No se aplicarán descuentos en Bodega Central.
                                   </td>
                                 </tr>
                               </tbody>
